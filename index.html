@@ -1,0 +1,2531 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>ドリンク収支帳</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#F6F4EE">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ドリンク収支帳">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap">
+<style>
+/* Layout: 帳簿のような1カラム。受付タブはタブレットで片手の親指でも押せる大きな操作部品に切り替える。 */
+:root{
+  --bg:#F6F4EE;
+  --panel:#FFFFFF;
+  --field:#FDFCF9;
+  --ink:#262220;
+  --ink-soft:#6B6357;
+  --ink-faint:#8F8676;
+  --line:#DEDACB;
+  --line-strong:#262220;
+  --accent:#6E2A35;
+  --accent-hover:#54202A;
+  --on-accent:#FFFFFF;
+  --accent-tint:#F3E7E5;
+  --good:#3F6355;
+  --bad:#954736;
+  --warn-bg:#FBF1D9;
+  --warn-ink:#6B4E0E;
+  --warn-line:#D9A93A;
+  --font-display:'Tsukushi A Round Gothic','TsukushiAMaruGothic-Regular','Tsukushi A Round Gothic Regular','筑紫A丸ゴシック','Zen Maru Gothic','Hiragino Maru Gothic ProN','Hiragino Sans',sans-serif;
+  --font-body:'Tsukushi A Round Gothic','TsukushiAMaruGothic-Regular','Tsukushi A Round Gothic Regular','筑紫A丸ゴシック','Zen Maru Gothic','Hiragino Maru Gothic ProN','Hiragino Sans',sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1B1819;
+    --panel:#242021;
+    --field:#2C2728;
+    --ink:#EFEAE2;
+    --ink-soft:#B5AC9E;
+    --ink-faint:#8A8173;
+    --line:#3D3637;
+    --line-strong:#EFEAE2;
+    --accent:#E2A0AB;
+    --accent-hover:#EDB6BF;
+    --on-accent:#2A1519;
+    --accent-tint:#3A2428;
+    --good:#8DBBA6;
+    --bad:#E39A86;
+    --warn-bg:#3A311A;
+    --warn-ink:#E8CF8E;
+    --warn-line:#B58A2C;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1B1819;
+  --panel:#242021;
+  --field:#2C2728;
+  --ink:#EFEAE2;
+  --ink-soft:#B5AC9E;
+  --ink-faint:#8A8173;
+  --line:#3D3637;
+  --line-strong:#EFEAE2;
+  --accent:#E2A0AB;
+  --accent-hover:#EDB6BF;
+  --on-accent:#2A1519;
+  --accent-tint:#3A2428;
+  --good:#8DBBA6;
+  --bad:#E39A86;
+  --warn-bg:#3A311A;
+  --warn-ink:#E8CF8E;
+  --warn-line:#B58A2C;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font-body);
+  font-size:15px;
+  line-height:1.6;
+  padding-block:24px 96px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  -webkit-font-smoothing:antialiased;
+}
+.app{max-width:1040px;margin:0 auto;min-width:0}
+
+/* header */
+.top{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;padding-bottom:18px}
+.brand{min-width:0}
+.brand h1{font-family:var(--font-display);font-size:26px;font-weight:700;margin:0 0 2px;letter-spacing:.02em;line-height:1.3}
+.brand p{margin:0;font-size:13px;color:var(--ink-soft)}
+.save-status{display:block;min-height:20px;margin-top:6px;font-size:12.5px;color:var(--ink-faint)}
+.save-status.is-error{color:var(--bad)}
+.total{text-align:right}
+.total .cap{font-size:12.5px;color:var(--ink-soft);margin-bottom:2px}
+.total .val{font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1.2}
+.total .val.neg{color:var(--bad)}
+
+/* tabs */
+.tabs{display:flex;gap:24px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:24px;overflow-x:auto}
+.tab{position:relative;padding:14px 2px;font:inherit;font-size:15px;color:var(--ink-soft);background:none;border:0;cursor:pointer;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--ink);font-weight:700}
+.tab[aria-selected="true"]::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:3px;background:var(--accent)}
+
+/* 大きな区分(事前準備 / 当日受付 / 精算・集計) */
+.tabs.main{gap:10px;border:0;margin-bottom:14px;overflow:visible}
+.gtab{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:12px;padding:12px 16px;min-height:64px;font:inherit;text-align:left;color:var(--ink);background:var(--panel);border:2px solid var(--line);border-radius:3px;cursor:pointer}
+.gtab:hover{border-color:var(--ink-soft)}
+.gtab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.gnum{flex:none;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;border:2px solid currentColor;font-weight:700;font-size:15px}
+.gtxt{display:flex;flex-direction:column;min-width:0}
+.gname{font-size:18px;font-weight:700;line-height:1.3}
+.gsub{font-size:12.5px;opacity:.8;line-height:1.35}
+.tabs.sub{margin-bottom:24px}
+@media (max-width:640px){
+  .gtab{padding:10px;gap:8px}
+  .gsub{display:none}
+  .gname{font-size:16px}
+  .gnum{display:none}
+  .gtab{justify-content:center;text-align:center}
+}
+
+/* panels */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:28px;min-width:0}
+.panel + .panel{margin-top:20px}
+h2{font-family:var(--font-display);font-size:19px;font-weight:700;margin:0 0 6px;line-height:1.4;text-wrap:balance}
+h3{font-size:14px;font-weight:700;color:var(--ink-soft);margin:0 0 12px}
+.note{margin:0 0 20px;font-size:13.5px;color:var(--ink-soft);max-width:62ch}
+.divider{height:1px;background:var(--line);margin:24px 0}
+.empty{color:var(--ink-faint);padding:20px 0;font-size:14px}
+.banner{margin:0 0 20px;padding:12px 14px;background:var(--warn-bg);color:var(--warn-ink);border-radius:3px;font-size:13.5px}
+
+/* controls */
+label{font-size:12.5px;color:var(--ink-soft)}
+input[type=text],input[type=date],input[type=number],select{
+  width:100%;padding:10px 12px;font:inherit;font-size:15px;color:var(--ink);
+  background:var(--field);border:1px solid var(--line);border-radius:2px;
+}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+input:disabled{opacity:.45}
+input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent);margin:0;flex:none;cursor:pointer}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;align-items:end}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.form-error{margin:12px 0 0;font-size:13.5px;color:var(--bad)}
+.btn{padding:10px 20px;font:inherit;font-size:14px;font-weight:700;border-radius:2px;cursor:pointer;border:1px solid transparent}
+.btn-primary{background:var(--accent);color:var(--on-accent)}
+.btn-primary:hover:not(:disabled){background:var(--accent-hover)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn-quiet{background:none;border-color:var(--line);color:var(--ink-soft);font-weight:500}
+.btn-quiet:hover{border-color:var(--ink-soft);color:var(--ink)}
+.link{background:none;border:0;padding:4px 6px;font:inherit;font-size:13px;color:var(--ink-faint);cursor:pointer}
+.link:hover{color:var(--accent);text-decoration:underline}
+.link.danger:hover{color:var(--bad)}
+.link.strong{color:var(--bad);font-weight:700}
+.row-actions{display:flex;gap:2px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+.select-wrap{max-width:380px;margin-bottom:22px}
+
+/* tables */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12.5px;font-weight:700;color:var(--ink-soft);padding:8px 10px;border-bottom:1px solid var(--line-strong);white-space:nowrap}
+td{padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+th.num{text-align:right}
+
+/* menu rows */
+.menu-head,.menu-row{display:grid;grid-template-columns:minmax(0,1.8fr) 120px 120px 90px 110px;gap:12px;align-items:center}
+.menu-head{padding:0 0 8px;border-bottom:1px solid var(--line-strong);font-size:12.5px;font-weight:700;color:var(--ink-soft)}
+.menu-row{padding:12px 0;border-bottom:1px solid var(--line)}
+.menu-row:last-child{border-bottom:0}
+.cap-m{display:none}
+.gross{text-align:right;font-variant-numeric:tabular-nums}
+.add-row{display:grid;grid-template-columns:minmax(0,1.8fr) 120px 120px auto;gap:12px;align-items:end}
+
+/* 材料・仕入れ品・想定杯数 */
+.menu-item{border-bottom:1px solid var(--line)}
+.menu-item:last-child{border-bottom:0}
+.menu-item .menu-row{border-bottom:0;padding-bottom:4px}
+.auto-cost{font-variant-numeric:tabular-nums}
+.auto-cost small{display:block;font-size:11.5px;color:var(--ink-soft)}
+.recipe-line{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:0 0 12px;font-size:13px;color:var(--ink-soft)}
+.recipe-line .rt{min-width:0;overflow-wrap:anywhere}
+.opt-line{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:0 0 12px;font-size:13px;color:var(--ink-soft)}
+.opt-line .rt{min-width:0;overflow-wrap:anywhere}
+.recipe-box{margin:6px 0 14px;padding:14px;border:1px solid var(--line-strong);background:var(--accent-tint);border-radius:3px}
+.recipe-box h4{margin:0 0 8px;font-size:14px}
+.rrow{display:grid;grid-template-columns:minmax(0,1.5fr) 110px auto minmax(0,1.2fr) auto;gap:10px;align-items:center;padding:6px 0}
+.rmu{font-size:13px;color:var(--ink-soft);white-space:nowrap}
+.rcup{font-size:12.5px;color:var(--ink-soft)}
+.item-head,.item-row{display:grid;grid-template-columns:minmax(0,1.4fr) 84px 100px 76px 110px minmax(0,1.7fr) 80px;gap:10px;align-items:center}
+.item-head{padding:0 0 8px;border-bottom:1px solid var(--line-strong);font-size:12.5px;font-weight:700;color:var(--ink-soft)}
+.item-row{padding:12px 0;border-bottom:1px solid var(--line)}
+.item-row:last-of-type{border-bottom:0}
+.i-uses{font-size:12.5px;color:var(--ink-soft);line-height:1.6}
+.add-item{display:grid;grid-template-columns:minmax(0,1.6fr) 90px 110px 90px 130px auto;gap:12px;align-items:end}
+.plan-head,.plan-row{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.5fr) 120px;gap:12px;align-items:center}
+.plan-head{padding:0 0 8px;border-bottom:1px solid var(--line-strong);font-size:12.5px;font-weight:700;color:var(--ink-soft)}
+.plan-row{padding:12px 0;border-bottom:1px solid var(--line)}
+.plan-row:last-of-type{border-bottom:0}
+.plan-row.is-off .s-name{color:var(--ink-faint)}
+.plan-how{font-size:13px;color:var(--ink-soft);overflow-wrap:anywhere}
+.s-name2{min-width:0}
+.s-name2 .sn{font-size:15px;font-weight:600}
+.s-sub{font-size:12px;color:var(--ink-soft);line-height:1.5;font-weight:400;white-space:normal}
+.s-need{font-size:12px;color:var(--accent);line-height:1.5}
+@media (max-width:900px){
+  .plan-head,.item-head{display:none}
+  .plan-row{grid-template-columns:1fr 1fr;gap:8px 12px}
+  .plan-row .s-name,.plan-row .plan-how{grid-column:1 / -1}
+  .plan-row .cap-m,.item-row .cap-m{display:block;font-size:12px;color:var(--ink-soft);margin-bottom:4px}
+  .item-row{grid-template-columns:1fr 1fr;gap:10px 12px;padding:16px 0}
+  .item-row > div:first-child,.item-row .i-uses,.item-row .row-actions{grid-column:1 / -1}
+  .add-item{grid-template-columns:1fr 1fr}
+  .add-item .field:first-child{grid-column:1 / -1}
+  .rrow{grid-template-columns:minmax(0,1fr) 100px auto}
+  .rrow .rcup{grid-column:1 / -1}
+  .stock-row .s-name2{grid-column:1 / -1}
+}
+
+/* stock rows */
+.stock-head,.stock-row{display:grid;grid-template-columns:minmax(0,1.4fr) 86px 86px 86px 64px 150px minmax(0,1fr);gap:10px;align-items:center}
+.stock-head{padding:0 0 8px;border-bottom:1px solid var(--line-strong);font-size:12.5px;font-weight:700;color:var(--ink-soft)}
+.stock-row{padding:14px 0;border-bottom:1px solid var(--line)}
+.stock-row:last-of-type{border-bottom:0}
+.stock-row.is-off .s-name{color:var(--ink-faint)}
+.s-name{display:flex;align-items:center;gap:12px;min-width:0;cursor:pointer;font-size:15px}
+.s-name .price{color:var(--ink-soft);font-size:13.5px;font-variant-numeric:tabular-nums}
+.add-stock{display:flex;gap:8px;align-items:center}
+.add-stock input{width:80px;flex:none}
+.stock-row .cap-m{display:none}
+.carry-hint .btn{background:var(--panel);color:var(--accent);border-color:var(--accent)}
+.pool-row .btn{background:var(--panel);color:var(--accent);border-color:var(--accent)}
+.carry-hint{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:0 0 18px;padding:12px 14px;border:1px solid var(--line-strong);background:var(--accent-tint);border-radius:3px;font-size:14px}
+.carry-hint.stack{display:block}
+.pool-row{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line)}
+.pool-row:first-of-type{margin-top:10px}
+.soft{margin-left:10px;color:var(--ink-soft);font-size:12.5px}
+.tin{width:100px;text-align:right;padding:6px 8px}
+.rem-ok{font-variant-numeric:tabular-nums}
+.rem-low{font-variant-numeric:tabular-nums;color:var(--warn-ink);font-weight:700}
+.rem-out{font-variant-numeric:tabular-nums;color:var(--bad);font-weight:700}
+
+/* summary */
+.sums{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:20px}
+.sum .cap{font-size:12.5px;color:var(--ink-soft);margin-bottom:4px}
+.sum .amt{font-family:var(--font-display);font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.3}
+.amt.pos{color:var(--good)}
+.amt.neg{color:var(--bad)}
+.foot-sum{display:flex;gap:28px;flex-wrap:wrap;margin-top:8px;padding-top:20px;border-top:1px solid var(--line-strong)}
+
+/* ---- 受付(タブレット向け) ---- */
+.recv-top{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:20px}
+.recv-top .select-wrap{margin:0;flex:1 1 260px}
+.counts{display:flex;gap:28px}
+.count .cap{font-size:13px;color:var(--ink-soft)}
+.count .big{font-family:var(--font-display);font-size:34px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
+.count .big small{font-size:16px;font-weight:500;margin-left:2px;color:var(--ink-soft)}
+.alert{margin:0 0 20px;padding:14px 16px;border:2px solid var(--warn-line);background:var(--warn-bg);color:var(--warn-ink);border-radius:3px;font-size:16px;font-weight:700}
+.alert ul{margin:6px 0 0;padding-left:20px;font-weight:500}
+.people{margin-bottom:22px}
+.people-head{display:flex;justify-content:space-between;align-items:center;gap:10px 24px;flex-wrap:wrap;margin-bottom:10px}
+.people-head .gl{margin:0;font-size:16px;font-weight:700;color:var(--ink)}
+.ptotal{margin-left:12px;font-family:var(--font-display);font-size:24px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+.pgrid{display:grid;grid-template-columns:repeat(var(--cols,2),minmax(0,1fr));gap:12px}
+.pcell,.punk{display:flex;flex-direction:column;align-items:stretch;gap:8px;border:2px solid var(--line);border-radius:3px;background:var(--field);padding:12px 12px 12px 14px;min-width:0}
+.pcell .pctl{justify-content:space-between}
+.pcell .pctl .n{flex:1}
+.pcell .pp{display:block;font-size:13px;font-weight:500;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.pcell.quiet{padding:8px 10px;gap:4px}
+.pcell.quiet .pl{font-size:14px;font-weight:500;color:var(--ink-soft)}
+.pcell.quiet .pctl button{width:44px;min-height:44px;font-size:22px}
+.pcell.quiet .pctl .n{font-size:22px}
+.pcell.on{border-color:var(--accent)}
+.pl{font-size:19px;font-weight:700;overflow-wrap:anywhere}
+.punk{padding:4px 8px 4px 14px}
+.punk .pl{font-size:15px;font-weight:500;color:var(--ink-soft)}
+.pctl{display:flex;align-items:stretch;gap:8px;flex:none}
+.pctl button{width:56px;min-height:56px;font:inherit;font-size:28px;line-height:1;border-radius:3px;cursor:pointer;border:2px solid var(--line);background:var(--panel);color:var(--ink)}
+.pctl button:disabled{opacity:.3;cursor:default}
+.pctl .plus{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:700}
+.pctl .plus:hover{background:var(--accent-hover)}
+.pctl .n{min-width:46px;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:30px;font-weight:700;font-variant-numeric:tabular-nums}
+.punk .pctl button{width:44px;min-height:44px;font-size:22px}
+.punk .pctl .n{font-size:22px;min-width:34px}
+.cart-sum .what.warn{color:var(--bad);font-size:14px}
+.group .gl{font-size:14px;color:var(--ink-soft);margin-bottom:8px}
+.seg{display:flex;gap:10px;flex-wrap:wrap}
+.seg button{min-width:132px;min-height:56px;padding:0 20px;font:inherit;font-size:19px;color:var(--ink);background:var(--field);border:2px solid var(--line);border-radius:3px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:700}
+.mode-switch{margin:0 0 20px}
+.none-row{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:16px 0 0}
+.none-btn{min-height:52px;padding:0 22px;font:inherit;font-size:18px;color:var(--ink);background:var(--field);border:2px solid var(--line);border-radius:3px;cursor:pointer}
+.none-btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:700}
+.none-row .soft{font-size:13px;color:var(--ink-soft);flex:1 1 220px}
+.d-extra{display:block;font-size:12px;font-weight:500;color:var(--ink-soft);text-align:right}
+.final-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
+.final-card{border:1px solid var(--line-strong);border-radius:3px;padding:18px 20px;background:var(--field)}
+.final-card h3{margin:0 0 4px;font-size:15px}
+.final-amt{font-family:var(--font-display);font-size:32px;font-weight:700;font-variant-numeric:tabular-nums;margin:0 0 10px}
+.final-amt.pos{color:var(--good,inherit)}
+.final-amt.neg{color:var(--bad)}
+.split-table td{padding:10px 8px;border-bottom:1px solid var(--line)}
+.split-table tr.strong td{font-weight:700}
+.split-table .indent{display:inline-block;padding-left:18px;color:var(--ink-soft)}
+.stepn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;margin-right:10px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-size:14px;font-weight:700}
+.people-head .gl .soft{font-weight:500}
+.fee-seg button{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;min-height:64px;padding:8px 18px;text-align:left}
+.fee-seg .fs-name{font-size:19px}
+.fee-seg .fs-price,.fee-seg .fs-n{font-size:13px;font-weight:500;font-variant-numeric:tabular-nums;opacity:.85}
+.fee-seg .fs-n{font-weight:700;opacity:1}
+.first-check{display:flex;gap:16px;align-items:center;padding:14px 16px;border:2px solid var(--line);border-radius:3px;background:var(--field);cursor:pointer}
+.first-check:has(input:checked){border-color:var(--accent);background:var(--accent-tint)}
+.first-check input{width:32px;height:32px}
+.first-check strong{display:block;font-size:19px}
+.first-check small{display:block;margin-top:2px;font-size:13.5px;color:var(--ink-soft)}
+.tin.wide{width:100%;min-width:140px;text-align:left}
+.tsel{width:auto;min-width:120px;padding:6px 8px}
+.inline-chk{display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer}
+.fee-pick{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 28px}
+.kind{display:inline-block;margin-right:8px;padding:1px 8px;font-size:12px;border:1px solid var(--line-strong);border-radius:2px;color:var(--ink-soft)}
+.one-opt{display:flex;gap:12px;align-items:center;cursor:pointer;font-size:15px;min-height:44px}
+.attr-note{margin:10px 0 0;font-size:13px;color:var(--ink-faint)}
+.drink-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.drink{border:2px solid var(--line);border-radius:3px;padding:16px 18px;background:var(--field);min-width:0}
+.drink.low{border-color:var(--warn-line);background:var(--warn-bg)}
+.drink.out{border-color:var(--bad)}
+.drink.in-cart{border-color:var(--accent)}
+.d-head{flex-wrap:wrap;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.d-name{font-size:22px;font-weight:700;overflow-wrap:anywhere}
+.d-price{font-size:15px;color:var(--ink-soft);font-variant-numeric:tabular-nums;white-space:nowrap}
+.d-stats{display:flex;gap:18px;flex-wrap:wrap;margin:8px 0 14px;font-size:16px;font-variant-numeric:tabular-nums}
+.d-stats .lbl{color:var(--ink-soft);font-size:13px;margin-right:4px}
+.d-stats .low-t{color:var(--warn-ink);font-weight:700}
+.d-stats .out-t{color:var(--bad);font-weight:700}
+.d-flag{display:inline-block;margin-left:6px;font-size:12.5px;font-weight:700}
+.cartstep{display:grid;grid-template-columns:64px minmax(0,1fr) 88px;gap:10px;align-items:stretch}
+.cartstep button{min-height:64px;font:inherit;font-size:30px;line-height:1;border-radius:3px;cursor:pointer;border:2px solid var(--line);background:var(--panel);color:var(--ink)}
+.cartstep button:disabled{opacity:.3;cursor:default}
+.cartstep .plus{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:700}
+.cartstep .plus:hover{background:var(--accent-hover)}
+.cartstep .n{display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:34px;font-weight:700;font-variant-numeric:tabular-nums}
+.cart-bar{position:sticky;bottom:0;z-index:5;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:24px -28px -28px;padding:14px 28px calc(14px + env(safe-area-inset-bottom, 0px));background:var(--panel);border-top:2px solid var(--line-strong)}
+.cart-btns{display:flex;gap:10px;margin-left:auto}
+.cart-sum{flex:1 1 220px;min-width:0}
+.cart-sum .cap{font-size:12.5px;color:var(--ink-soft)}
+.cart-sum .what{font-size:16px;overflow-wrap:anywhere}
+.cart-sum .what.dim{color:var(--ink-faint)}
+.cart-sum .pay{font-family:var(--font-display);font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;margin-left:10px}
+.btn-lg{min-height:60px;padding:0 28px;font-size:18px}
+.recent{margin-top:34px}
+.recent-row{display:flex;gap:14px;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:14.5px}
+.recent-row:last-child{border-bottom:0}
+.recent-row .who{color:var(--ink-soft);font-size:13.5px}
+.recent-row .t{font-variant-numeric:tabular-nums;color:var(--ink-faint);margin-right:8px}
+
+.toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom, 0px));transform:translate(-50%,0);background:var(--ink);color:var(--bg);padding:12px 20px;border-radius:3px;font-size:15px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion: reduce){.toast{transition:none}}
+
+@media (max-width:900px){
+  .stock-head{display:none}
+  .stock-row{grid-template-columns:1fr 1fr 1fr;gap:10px 12px;padding:16px 0}
+  .stock-row .s-name{grid-column:1 / -1}
+  .stock-row .add-stock{grid-column:auto}
+  .stock-row > div:last-child{grid-column:1 / -1}
+  .stock-row .cap-m{display:block;font-size:12px;color:var(--ink-soft);margin-bottom:4px}
+}
+@media (max-width:640px){
+  .pgrid{grid-template-columns:repeat(var(--cols-s,2),minmax(0,1fr))}
+  .panel{padding:18px}
+  .cart-bar{margin:20px -18px -18px;padding-left:18px;padding-right:18px}
+  .total{text-align:left}
+  .menu-head{display:none}
+  .menu-row{grid-template-columns:1fr 1fr;gap:10px 12px;padding:16px 0}
+  .menu-row .m-name{grid-column:1 / -1}
+  .cap-m{display:block;font-size:12px;color:var(--ink-soft);margin-bottom:4px}
+  .menu-row .gross{text-align:left}
+  .menu-row .row-actions{justify-content:flex-start}
+  .add-row{grid-template-columns:1fr 1fr}
+  .add-row .field:first-child{grid-column:1 / -1}
+  .pgrid{grid-template-columns:1fr}
+}
+/* ログイン・接続設定の画面 */
+#boot{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--bg);overflow:auto}
+#boot[hidden]{display:none}
+.boot-card{width:100%;max-width:400px;background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:28px}
+.boot-card h1{font-family:var(--font-display);font-size:24px;margin:0 0 10px}
+.boot-card label{display:block;margin:16px 0 4px;font-size:13px;color:var(--ink-soft)}
+.boot-card input{width:100%;padding:12px;font:inherit;font-size:16px;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:2px}
+.boot-card button{width:100%;margin-top:20px;padding:14px;font:inherit;font-size:16px;font-weight:700;color:var(--on-accent);background:var(--accent);border:0;border-radius:2px;cursor:pointer}
+.boot-card button:disabled{opacity:.6}
+.boot-note{margin:0;font-size:14px;color:var(--ink-soft)}
+.boot-err{margin:14px 0 0;font-size:14px;color:var(--bad)}
+.file-in{font:inherit;font-size:14px;max-width:100%}
+.imp-box{margin-top:16px;padding:14px 16px;border:1px solid var(--line-strong);background:var(--accent-tint);border-radius:3px;font-size:14px}
+.imp-box .actions{margin-top:10px}
+</style>
+</head>
+<body>
+<div id="boot" hidden></div>
+<div class="app" id="app"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  /* お客さんの属性。項目を足すときはここに追加する。 */
+  var ATTRS = [
+    {key: 'g', label: '性別', opts: [['m', '男性'], ['f', '女性']]},
+    {key: 'o', label: '区分', opts: [['s', '学生'], ['w', '社会人']]}
+  ];
+
+  var state = {
+    menu: [],
+    items: [],
+    recipeEdit: null,
+    events: [],
+    records: [],
+    tab: 'events',
+    editingEventId: null,
+    recvEventId: null,
+    firstDrink: true,
+    recvFee: null,
+    feeEventId: null,
+    fees: [],
+    stockEventId: null,
+    expenseEventId: null,
+    reportScope: 'all',
+    cart: {people: {}, items: {}, none: false},
+    optEdit: null,
+    confirm: null,        // {kind, id}
+    formError: null,      // {scope, msg}
+    loaded: false,
+    dbOk: null,           // null: 確認中, true: 保存できる, false: 保存できない
+    save: 'idle'          // idle | saving | saved | error | local
+  };
+  var db = null;
+  var pending = new Set();   // 書き込み中のドキュメント(サーバーからの更新で上書きしない)
+  var writers = new Map();
+  var needsRender = false;
+  var recIdx = null;
+
+  /* ---------- helpers ---------- */
+  function $(s, r){ return (r || document).querySelector(s); }
+  function esc(s){
+    if (s === undefined || s === null) return '';
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function uid(){ return Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4); }
+  function yen(n){ return '¥' + Math.round(n || 0).toLocaleString('ja-JP'); }
+  function num(v){ var n = Number(v); return isFinite(n) ? n : 0; }
+  function fmtDate(d){
+    if (!d) return '日付未設定';
+    var p = d.split('-');
+    if (p.length !== 3) return d;
+    return p[0] + '年' + parseInt(p[1], 10) + '月' + parseInt(p[2], 10) + '日';
+  }
+  function fmtTime(t){
+    var d = new Date(t);
+    return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+  }
+  function todayStr(){
+    var d = new Date();
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+  function toast(msg){
+    var t = $('#toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function(){ t.classList.remove('show'); }, 2000);
+  }
+  function clone(o){ return JSON.parse(JSON.stringify(o)); }
+  function attrLabel(key, v){
+    var a = ATTRS.filter(function(x){ return x.key === key; })[0];
+    if (!a) return '';
+    var o = a.opts.filter(function(x){ return x[0] === v; })[0];
+    return o ? o[1] : '';
+  }
+  /* 人数は「性別|区分」の組み合わせごとに数える。分からない人のキーは '|' */
+  function personKey(g, o, fid){ return (g || '') + '|' + (o || '') + (fid ? '|' + fid : ''); }
+  function peopleTotal(p){
+    var s = 0;
+    Object.keys(p || {}).forEach(function(k){ s += Math.max(0, Math.floor(num(p[k]))); });
+    return s;
+  }
+  function personLabel(key, rec){
+    var p = key.split('|'), fid = p[2] || '';
+    var fname = (rec && rec.feeNames && rec.feeNames[fid]) || (feeById(fid) ? feeById(fid).name : '');
+    var parts = [attrLabel(ATTRS[0].key, p[0]), fname || attrLabel(ATTRS[1].key, p[1])].filter(Boolean);
+    return parts.length ? parts.join('・') : '属性不明';
+  }
+  /* 前のバージョンの記録(1件=1人、属性は a)も読めるようにする */
+  function legacyPeople(d){
+    if (d.people && typeof d.people === 'object') return clone(d.people);
+    var a = (d.a && typeof d.a === 'object') ? d.a : {};
+    var p = {};
+    p[personKey(a[ATTRS[0].key], a[ATTRS[1].key])] = 1;
+    return p;
+  }
+
+  /* ---------- data access ---------- */
+  function sortedMenu(){ return state.menu.slice().sort(function(a, b){ return (a.order || 0) - (b.order || 0); }); }
+  function sortedFees(){ return state.fees.slice().sort(function(a, b){ return (a.order || 0) - (b.order || 0); }); }
+  function feeById(id){ return id ? state.fees.filter(function(f){ return f.id === id; })[0] : null; }
+  /* 受付に出す参加費の種類(このイベントで使うもの) */
+  function eventFees(ev){
+    var all = sortedFees();
+    if (!all.length) return [{id: '_s', name: '学生', price: 0, o: 's', std: true}, {id: '_w', name: '社会人', price: 0, o: 'w', std: true}];
+    var list = ev.feeIds ? all.filter(function(f){ return ev.feeIds.indexOf(f.id) !== -1; }) : all.filter(function(f){ return f.std; });
+    return list.length ? list : all;
+  }
+  function feeFor(id){
+    if (id === '_s') return {id: id, name: '学生', price: 0, o: 's'};
+    if (id === '_w') return {id: id, name: '社会人', price: 0, o: 'w'};
+    return feeById(id);
+  }
+  /* 参加受付の記録1件の参加費(記録した時の金額で計算) */
+  function recFee(r){
+    if (r.kind !== 'entry') return 0;
+    if (!Object.keys(r.feePrices).length) return Math.max(0, num(r.fee)) * peopleTotal(r.people);
+    var t = 0;
+    Object.keys(r.people).forEach(function(k){
+      var fid = k.split('|')[2];
+      if (fid && r.feePrices[fid] !== undefined) t += Math.max(0, Math.floor(num(r.people[k]))) * Math.max(0, num(r.feePrices[fid]));
+    });
+    return t;
+  }
+  function sortedEvents(){
+    return state.events.slice().sort(function(a, b){
+      return (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0);
+    });
+  }
+  function drinkById(id){ return state.menu.find(function(m){ return m.id === id; }); }
+  function eventById(id){ return state.events.find(function(e){ return e.id === id; }); }
+  function recsOf(evId){
+    if (!recIdx){
+      recIdx = {};
+      state.records.forEach(function(r){ (recIdx[r.eventId] = recIdx[r.eventId] || []).push(r); });
+    }
+    return recIdx[evId] || [];
+  }
+  function recordsChanged(){ recIdx = null; }
+  function defaultEvent(){
+    if (!state.events.length) return null;
+    var today = Date.parse(todayStr());
+    function dist(e){ return e.date ? Math.abs(Date.parse(e.date) - today) : Infinity; }
+    return state.events.slice().sort(function(a, b){
+      return dist(a) - dist(b) || (b.date || '').localeCompare(a.date || '');
+    })[0];
+  }
+  function pickEvent(key){
+    var cur = state[key] && eventById(state[key]);
+    if (!cur){ cur = defaultEvent(); if (cur) state[key] = cur.id; }
+    return cur;
+  }
+
+  function normMenu(id, d){
+    return {
+      id: id, name: String(d.name || ''), price: num(d.price),
+      cost: (d.cost === null || d.cost === undefined || d.cost === '') ? null : num(d.cost),
+      recipe: Array.isArray(d.recipe) ? d.recipe.map(function(x){ x = x || {}; return {itemId: String(x.itemId || ''), amount: Math.max(0, num(x.amount))}; }) : [],
+      priceRefill: (d.priceRefill === null || d.priceRefill === undefined || d.priceRefill === '') ? null : Math.max(0, num(d.priceRefill)),
+      payee: d.payee === 'partner' ? 'partner' : 'own', entryExtra: Math.max(0, num(d.entryExtra)),
+      order: num(d.order)
+    };
+  }
+  function normItem(id, d){
+    return {id: id, name: String(d.name || ''), unit: String(d.unit || '本'), size: num(d.size) > 0 ? num(d.size) : 1, mu: String(d.mu || 'ml'),
+      price: (d.price === null || d.price === undefined || d.price === '') ? null : Math.max(0, num(d.price)), order: num(d.order)};
+  }
+  function normEvent(id, d){
+    return {
+      id: id, name: String(d.name || ''), date: String(d.date || ''), venue: String(d.venue || ''),
+      menuIds: Array.isArray(d.menuIds) ? d.menuIds.slice() : [],
+      stock: (d.stock && typeof d.stock === 'object') ? clone(d.stock) : {},
+      alertAt: (d.alertAt && typeof d.alertAt === 'object') ? clone(d.alertAt) : {},
+      oneDrink: d.oneDrink === true, firstPaid: d.firstPaid === true, partner: String(d.partner || ''), ownName: String(d.ownName || ''), feeIds: Array.isArray(d.feeIds) ? d.feeIds.slice() : null,
+      carryIn: (d.carryIn && typeof d.carryIn === 'object') ? clone(d.carryIn) : {},
+      plan: (d.plan && typeof d.plan === 'object') ? clone(d.plan) : {},
+      expenses: Array.isArray(d.expenses) ? d.expenses.map(function(x){
+        x = x || {};
+        return {id: String(x.id || uid()), label: String(x.label || ''), amount: num(x.amount),
+          kind: x.kind === 'carry' ? 'carry' : 'new', carryOut: num(x.carryOut), from: x.from ? String(x.from) : '',
+          bearer: x.bearer === 'partner' ? 'partner' : 'own', source: String(x.source || '')};
+      }) : [],
+      createdAt: num(d.createdAt)
+    };
+  }
+  function normRecord(id, d){
+    return {
+      id: id, eventId: String(d.eventId || ''), t: num(d.t),
+      people: legacyPeople(d),
+      items: (d.items && typeof d.items === 'object') ? clone(d.items) : {},
+      prices: (d.prices && typeof d.prices === 'object') ? clone(d.prices) : {},
+      names: (d.names && typeof d.names === 'object') ? clone(d.names) : {},
+      kind: (d.kind === 'entry' || d.kind === 'extra' || d.kind === 'first') ? d.kind : '', fee: Math.max(0, num(d.fee)),
+      payees: (d.payees && typeof d.payees === 'object') ? clone(d.payees) : {},
+      extras: (d.extras && typeof d.extras === 'object') ? clone(d.extras) : {},
+      feeShares: (d.feeShares && typeof d.feeShares === 'object') ? clone(d.feeShares) : {},
+      feePrices: (d.feePrices && typeof d.feePrices === 'object') ? clone(d.feePrices) : {},
+      feeNames: (d.feeNames && typeof d.feeNames === 'object') ? clone(d.feeNames) : {}
+    };
+  }
+  function normFee(id, d){
+    return {id: id, name: String(d.name || ''), price: Math.max(0, num(d.price)), o: (d.o === 's' || d.o === 'w') ? d.o : '', std: d.std !== false, share: Math.max(0, num(d.share)), order: num(d.order)};
+  }
+  function feeDoc(f){ return {name: f.name, price: f.price, o: f.o, std: !!f.std, share: f.share || 0, order: f.order}; }
+  function menuDoc(m){ return {name: m.name, price: m.price, cost: m.cost, recipe: m.recipe.map(function(x){ return {itemId: x.itemId, amount: x.amount}; }), priceRefill: m.priceRefill, payee: m.payee, entryExtra: m.entryExtra, order: m.order}; }
+  function itemDoc(i){ return {name: i.name, unit: i.unit, size: i.size, mu: i.mu, price: i.price, order: i.order}; }
+  function eventDoc(e){
+    return {name: e.name, date: e.date, venue: e.venue, menuIds: e.menuIds, stock: e.stock, alertAt: e.alertAt, carryIn: e.carryIn, plan: e.plan, oneDrink: !!e.oneDrink, firstPaid: !!e.firstPaid, partner: e.partner || '', ownName: e.ownName || '', feeIds: e.feeIds || null, expenses: e.expenses, createdAt: e.createdAt};
+  }
+  function recordDoc(r){ return {eventId: r.eventId, t: r.t, people: r.people, items: r.items, prices: r.prices, names: r.names, kind: r.kind || '', fee: r.fee || 0, feePrices: r.feePrices || {}, feeNames: r.feeNames || {}, payees: r.payees || {}, extras: r.extras || {}, feeShares: r.feeShares || {}}; }
+
+  /* ---------- 計算 ---------- */
+  function soldMap(evId){
+    var m = {};
+    recsOf(evId).forEach(function(r){
+      Object.keys(r.items).forEach(function(id){ m[id] = (m[id] || 0) + Math.max(0, Math.floor(num(r.items[id]))); });
+    });
+    return m;
+  }
+  /* 経費1行のうち、今回の費用になる額(金額−次回に持ち越す額) */
+  function expCarry(e){
+    var a = Math.max(0, num(e.amount));
+    return Math.min(Math.max(0, num(e.carryOut)), a);
+  }
+  function expUsed(e){ return Math.max(0, num(e.amount)) - expCarry(e); }
+  /* ドリンクの価格。おかわり(2杯目以降)の価格が決まっていれば、おかわりのときはそちらを使う */
+  function drinkPrice(d, mode){
+    if (mode === 'extra' && d.priceRefill !== null && d.priceRefill !== undefined) return d.priceRefill;
+    return d.price;
+  }
+  function partnerName(ev){ return (ev && ev.partner) ? ev.partner : '相手'; }
+  /* 受付の記録1件について、預かった金額と、そのうち相手に渡す金額(記録した時点の設定で計算) */
+  function recSplit(r){
+    var fee = recFee(r), feeP = 0, drinkAmt = 0, drinkP = 0, sur = 0, surP = 0;
+    if (r.kind === 'entry'){
+      Object.keys(r.people).forEach(function(k){
+        var fid = k.split('|')[2];
+        if (fid && r.feeShares[fid] !== undefined) feeP += Math.max(0, Math.floor(num(r.people[k]))) * Math.max(0, num(r.feeShares[fid]));
+      });
+      feeP = Math.min(feeP, fee);
+      Object.keys(r.items).forEach(function(id){
+        var q = Math.max(0, Math.floor(num(r.items[id]))), ex = Math.max(0, num(r.extras[id]));
+        sur += ex * q;
+        if (r.payees[id] === 'partner') surP += ex * q;
+      });
+    } else {
+      Object.keys(r.items).forEach(function(id){
+        var q = Math.max(0, Math.floor(num(r.items[id])));
+        var d = drinkById(id);
+        var price = (r.prices[id] !== undefined) ? num(r.prices[id]) : (d ? d.price : 0);
+        drinkAmt += price * q;
+        if (r.payees[id] === 'partner') drinkP += price * q;
+      });
+    }
+    return {fee: fee, feeP: feeP, drinkAmt: drinkAmt, drinkP: drinkP, sur: sur, surP: surP};
+  }
+  function eventFinance(ev){
+    var drinkRev = 0, entry = 0, surcharge = 0, cost = 0, cups = 0, freeCups = 0, entryP = 0, drinkP = 0, surP = 0;
+    var recs = recsOf(ev.id);
+    recs.forEach(function(r){
+      var sp = recSplit(r);
+      entry += sp.fee; drinkRev += sp.drinkAmt; surcharge += sp.sur;
+      entryP += sp.feeP; drinkP += sp.drinkP; surP += sp.surP;
+      Object.keys(r.items).forEach(function(id){
+        var q = Math.max(0, Math.floor(num(r.items[id])));
+        var d = drinkById(id);
+        if (r.kind === 'entry') freeCups += q;
+        cost += (d ? (drinkCost(d) || 0) : 0) * q;
+        cups += q;
+      });
+    });
+    /* 預かった金額(受付に入ったお金)と、そのうち相手に渡す分・自分たち(YAP)の取り分 */
+    var revenue = drinkRev + entry + surcharge;
+    var partnerRev = entryP + drinkP + surP;
+    var ownRev = revenue - partnerRev;
+    /* 経費: 自分たちが負担する分だけを利益に入れる(今回使った分。前回の残りを使えば今回の費用、次回に回す分は外れる) */
+    var expense = 0, partnerExp = 0, paid = 0;
+    ev.expenses.forEach(function(e){
+      var u = expUsed(e);
+      if (e.bearer === 'partner') partnerExp += u;
+      else { expense += u; if (e.kind !== 'carry') paid += Math.max(0, num(e.amount)); }
+    });
+    var carryOut = ev.expenses.reduce(function(a, e){ return a + expCarry(e); }, 0);
+    var sold = soldMap(ev.id);
+    var purchase = 0, leftover = 0;
+    stockLines(ev).forEach(function(l){
+      var c = l.price || 0;
+      purchase += c * Math.max(0, Math.floor(num(ev.stock[l.key])));
+      var rem = lineRem(ev, l, sold);
+      if (rem !== null) leftover += c * Math.max(0, rem);
+    });
+    var visitors = recs.reduce(function(a, r){ return a + peopleTotal(r.people); }, 0);
+    return {
+      revenue: revenue, entry: entry, drinkRev: drinkRev, surcharge: surcharge, freeCups: freeCups, cost: cost, expense: expense, cups: cups, visitors: visitors,
+      partnerRev: partnerRev, ownRev: ownRev, partnerExp: partnerExp, entryP: entryP, drinkP: drinkP, surP: surP,
+      profit: ownRev - cost - expense, partnerProfit: partnerRev - partnerExp,
+      paid: paid, purchase: purchase, cash: ownRev - purchase - paid, leftover: leftover, carryOut: carryOut
+    };
+  }
+  /* 支払い元ごとの、備品などの支払い額(前回の残りを使った分は、今回は払っていないので入れない) */
+  function sourceTotals(events){
+    var m = {}, order = [];
+    events.forEach(function(ev){
+      ev.expenses.forEach(function(e){
+        if (e.kind === 'carry') return;
+        var k = e.source || '(支払い元なし)';
+        if (!m[k]){ m[k] = {name: k, own: 0, partner: 0}; order.push(k); }
+        m[k][e.bearer === 'partner' ? 'partner' : 'own'] += Math.max(0, num(e.amount));
+      });
+    });
+    return order.map(function(k){ return m[k]; });
+  }
+  function totalFinance(events){
+    var t = {revenue: 0, entry: 0, drinkRev: 0, freeCups: 0, cost: 0, expense: 0, cups: 0, visitors: 0, profit: 0, paid: 0, purchase: 0, cash: 0, leftover: 0, carryOut: 0, surcharge: 0, partnerProfit: 0, partnerRev: 0, ownRev: 0, partnerExp: 0, entryP: 0, drinkP: 0, surP: 0};
+    events.forEach(function(ev){
+      var f = eventFinance(ev);
+      Object.keys(t).forEach(function(k){ t[k] += f[k]; });
+    });
+    return t;
+  }
+  function ranking(events){
+    var map = {};
+    events.forEach(function(ev){
+      recsOf(ev.id).forEach(function(r){
+        Object.keys(r.items).forEach(function(id){
+          var q = Math.max(0, Math.floor(num(r.items[id])));
+          if (!q) return;
+          var d = drinkById(id);
+          var price = (r.prices[id] !== undefined) ? num(r.prices[id]) : (d ? d.price : 0);
+          if (!map[id]) map[id] = {name: d ? d.name : (r.names[id] || '削除したドリンク'), qty: 0, revenue: 0, free: 0};
+          map[id].qty += q;
+          if (r.kind === 'entry') map[id].free += q; else map[id].revenue += price * q;
+        });
+      });
+    });
+    return Object.keys(map).map(function(k){ return map[k]; }).sort(function(a, b){
+      return b.qty - a.qty || a.name.localeCompare(b.name, 'ja');
+    });
+  }
+  function drinksMissingCost(events){
+    var names = {};
+    events.forEach(function(ev){
+      var sold = soldMap(ev.id);
+      stockLines(ev).forEach(function(l){
+        if (l.price !== null) return;
+        if (lineUsed(l, sold) > 0 || num(ev.stock[l.key]) > 0 || num(ev.carryIn[l.key]) > 0) names[l.name] = true;
+      });
+    });
+    return Object.keys(names);
+  }
+
+  /* ---------- 仕入れ品(材料)・1杯の量・在庫 ---------- */
+  /* 在庫は「仕入れの単位(本・缶など)」で数える。ビールのように1杯=1本のドリンクは、そのドリンク自身が在庫の1行になる。
+     ウイスキーや炭酸水のように何杯も作る材料は、仕入れ品として登録し、ドリンクごとに「1杯あたりの量」を決める。 */
+  function r3(n){ return Math.round(n * 1000) / 1000; }
+  function r6(n){ return Math.round(n * 1000000) / 1000000; }
+  function fq(n){ return String(Math.round(num(n) * 100) / 100); }
+  function sortedItems(){ return state.items.slice().sort(function(a, b){ return (a.order || 0) - (b.order || 0); }); }
+  function itemById(id){ return id ? state.items.filter(function(i){ return i.id === id; })[0] : null; }
+  function itemSize(it){ return it.size > 0 ? it.size : 1; }
+  function activeRecipe(d){
+    return (d.recipe || []).filter(function(x){ return x.amount > 0 && itemById(x.itemId); });
+  }
+  function hasRecipe(d){ return activeRecipe(d).length > 0; }
+  /* 1杯の原価。材料があれば「材料の値段÷1単位の量×1杯の量」の合計、なければメニューに入れた原価 */
+  function drinkCost(d){
+    if (d.payee === 'partner') return 0;
+    var rec = activeRecipe(d);
+    if (!rec.length) return d.cost;
+    var t = 0, any = false;
+    rec.forEach(function(x){
+      var it = itemById(x.itemId);
+      if (it.price !== null){ t += it.price / itemSize(it) * x.amount; any = true; }
+    });
+    return any ? t : null;
+  }
+  function drinkCostPartial(d){
+    return activeRecipe(d).some(function(x){ return itemById(x.itemId).price === null; });
+  }
+  /* このイベントの在庫の行(出すドリンクが使うものを、重ならないようにまとめる) */
+  function stockLines(ev){
+    var map = {}, order = [];
+    function line(key, make){
+      if (!map[key]){ map[key] = make(); order.push(key); }
+      return map[key];
+    }
+    eventDrinks(ev).forEach(function(d){
+      var rec = activeRecipe(d);
+      if (!rec.length){
+        line(d.id, function(){ return {key: d.id, kind: 'drink', name: d.name, unit: '本', size: 1, mu: '', price: d.payee === 'partner' ? 0 : d.cost, uses: []}; })
+          .uses.push({drink: d, amount: 1});
+      } else {
+        rec.forEach(function(x){
+          var it = itemById(x.itemId);
+          line(it.id, function(){ return {key: it.id, kind: 'item', name: it.name, unit: it.unit, size: itemSize(it), mu: it.mu, price: it.price, uses: []}; })
+            .uses.push({drink: d, amount: x.amount});
+        });
+      }
+    });
+    /* 使うドリンクが選ばれていなくても、持ち越しや仕入れの入力がある仕入れ品は、残りを見失わないように並べる */
+    sortedItems().forEach(function(it){
+      if (map[it.id]) return;
+      if (ev.stock[it.id] === undefined && ev.carryIn[it.id] === undefined) return;
+      line(it.id, function(){ return {key: it.id, kind: 'item', name: it.name, unit: it.unit, size: itemSize(it), mu: it.mu, price: it.price, uses: []}; });
+    });
+    return order.map(function(k){ return map[k]; });
+  }
+  function keyInfo(key){
+    var d = drinkById(key);
+    if (d) return {name: d.name, unit: '本'};
+    var it = itemById(key);
+    return it ? {name: it.name, unit: it.unit} : null;
+  }
+  /* 売れた杯数から、その行を何単位使ったか */
+  function lineUsed(l, sold){
+    var u = 0;
+    l.uses.forEach(function(x){ u += (sold[x.drink.id] || 0) * x.amount / l.size; });
+    return u;
+  }
+  /* 在庫: 前回からの持ち越し + 今回の仕入れ(入力がなければ null) */
+  function stockTotal(ev, id){
+    var c = ev.carryIn[id], s = ev.stock[id];
+    var noC = (c === undefined || c === null), noS = (s === undefined || s === null);
+    if (noC && noS) return null;
+    return num(c) + num(s);
+  }
+  function lineRem(ev, l, sold){
+    var t = stockTotal(ev, l.key);
+    return t === null ? null : t - lineUsed(l, sold);
+  }
+  function lineLevel(ev, l, rem){
+    if (rem === null) return 'none';
+    var need = l.uses.length ? Math.min.apply(null, l.uses.map(function(x){ return x.amount / l.size; })) : 0;
+    if (rem <= 0 || rem < need - 1e-9) return 'out';
+    var a = ev.alertAt[l.key];
+    if (a !== undefined && a !== null && rem <= num(a) + 1e-9) return 'low';
+    return 'ok';
+  }
+  /* ドリンク1種類で、あと何杯作れるか(材料のうち一番少ないもので決まる) */
+  function stockState(ev, id, sold){
+    var cups = null, lv = 'none';
+    stockLines(ev).forEach(function(l){
+      var use = l.uses.filter(function(x){ return x.drink.id === id; })[0];
+      if (!use) return;
+      var rem = lineRem(ev, l, sold);
+      if (rem === null) return;
+      var c = Math.floor((rem * l.size + 1e-6) / use.amount);
+      cups = cups === null ? c : Math.min(cups, c);
+      var v = lineLevel(ev, l, rem);
+      if (v === 'out' || lv === 'out') lv = 'out';
+      else if (v === 'low' || lv === 'low') lv = 'low';
+      else lv = 'ok';
+    });
+    if (cups === null) return {rem: null, level: 'none'};
+    if (cups <= 0) lv = 'out';
+    return {rem: cups, level: lv};
+  }
+  /* 材料の残りで、各ドリンクをあと何杯作れるか(材料のドリンクだけ) */
+  function lineCupsText(l, rem){
+    if (l.kind !== 'item' || rem === null || !l.uses.length) return '';
+    return l.uses.map(function(x){
+      return esc(x.drink.name) + ' 約' + Math.max(0, Math.floor((rem * l.size + 1e-6) / x.amount)) + '杯';
+    }).join(' / ');
+  }
+  /* 想定杯数から、この行を何単位使う見込みか */
+  function planNeed(ev, l){
+    var n = 0;
+    l.uses.forEach(function(x){ n += Math.max(0, num(ev.plan[x.drink.id])) * x.amount / l.size; });
+    return n;
+  }
+  function planBuy(ev, l){
+    return Math.max(0, Math.ceil(r3(planNeed(ev, l) - num(ev.carryIn[l.key]))));
+  }
+  function needText(ev, l){
+    var need = planNeed(ev, l);
+    if (!(need > 0)) return '';
+    return '想定では ' + fq(need) + esc(l.unit) + ' 使う見込み → 仕入れの目安 ' + planBuy(ev, l) + esc(l.unit);
+  }
+  function isBefore(a, b){
+    if (!a.date || !b.date) return false;
+    return a.date < b.date || (a.date === b.date && (a.createdAt || 0) < (b.createdAt || 0));
+  }
+  /* 持ち越しの元になる、直前のイベント(仕入れや持ち越しの入力があるもの) */
+  function prevStockEvent(ev){
+    var list = state.events.filter(function(e){
+      return e.id !== ev.id && isBefore(e, ev) && (Object.keys(e.stock).length || Object.keys(e.carryIn).length);
+    }).sort(function(a, b){ return b.date.localeCompare(a.date) || (b.createdAt || 0) - (a.createdAt || 0); });
+    return list[0] || null;
+  }
+  function leftoversOf(ev){
+    var sold = soldMap(ev.id), out = {};
+    stockLines(ev).forEach(function(l){
+      var r = lineRem(ev, l, sold);
+      if (r !== null && r > 0.0005) out[l.key] = r3(r);
+    });
+    return out;
+  }
+  /* 前回までに「次回に持ち越す」とした備品のうち、まだ誰も使っていないもの */
+  function expensePool(forEv){
+    var consumed = {};
+    state.events.forEach(function(e){ e.expenses.forEach(function(x){ if (x.from) consumed[x.from] = true; }); });
+    var out = [];
+    state.events.forEach(function(e){
+      if (forEv && (e.id === forEv.id || !isBefore(e, forEv))) return;
+      e.expenses.forEach(function(x){
+        var c = expCarry(x);
+        if (c > 0 && !consumed[x.id]) out.push({id: x.id, label: x.label, value: c, eventName: e.name, eventDate: e.date, bearer: x.bearer, source: x.source});
+      });
+    });
+    return out;
+  }
+  function eventDrinks(ev){
+    return sortedMenu().filter(function(m){ return ev.menuIds.indexOf(m.id) !== -1; });
+  }
+  function crossCounts(events){
+    var rows = ATTRS[0].opts.concat([['', '未回答']]);
+    var cols = ATTRS[1].opts.concat([['', '未回答']]);
+    var c = {};
+    rows.forEach(function(r){ c[r[0]] = {}; cols.forEach(function(k){ c[r[0]][k[0]] = 0; }); });
+    events.forEach(function(ev){
+      recsOf(ev.id).forEach(function(rec){
+        Object.keys(rec.people).forEach(function(k){
+          var n = Math.max(0, Math.floor(num(rec.people[k])));
+          var p = k.split('|'), rv = p[0] || '', cv = p[1] || '';
+          if (!c[rv]) rv = '';
+          if (c[rv][cv] === undefined) cv = '';
+          c[rv][cv] += n;
+        });
+      });
+    });
+    return {rows: rows, cols: cols, c: c};
+  }
+
+  /* ---------- 保存 ---------- */
+  function setSave(s){
+    state.save = s;
+    var el = $('#save-status');
+    if (!el) return;
+    var text = {idle: '', saving: '保存中…', saved: (window.APP_UNSYNCED > 0 ? '端末に保存しました(通信がつながると自動で送られます)' : '保存しました'), error: '保存できませんでした。通信状況を確認して、もう一度操作してください', local: '保存されません(この画面を閉じると消えます)'}[s];
+    el.textContent = text;
+    el.classList.toggle('is-error', s === 'error' || s === 'local');
+  }
+  function persist(path, getData, delay){
+    if (!db){ setSave('local'); return; }
+    pending.add(path);
+    var w = writers.get(path);
+    if (!w){ w = {timer: null, running: false, again: false}; writers.set(path, w); }
+    clearTimeout(w.timer);
+    setSave('saving');
+    w.timer = setTimeout(function(){ flush(path, getData); }, delay === undefined ? 300 : delay);
+  }
+  function flush(path, getData){
+    var w = writers.get(path);
+    w.timer = null;
+    if (w.running){ w.again = true; return; }
+    w.running = true;
+    (async function(){
+      try{
+        do{
+          w.again = false;
+          var data = getData();
+          if (data === null) await db.doc(path).delete();
+          else await db.doc(path).set(data);
+        } while (w.again);
+        w.running = false;
+        if (!w.timer) pending.delete(path);
+        if (!othersBusy(w)) setSave('saved');
+      }catch(e){
+        w.running = false;
+        if (!w.timer) pending.delete(path);
+        setSave('error');
+      }
+    })();
+  }
+  function othersBusy(self){
+    var busy = false;
+    writers.forEach(function(w){ if (w !== self && (w.timer || w.running)) busy = true; });
+    return busy || !!self.timer;
+  }
+  function saveMenu(id){
+    persist('menu/' + id, function(){ var m = drinkById(id); return m ? menuDoc(m) : null; });
+  }
+  function saveItem(id){
+    persist('items/' + id, function(){ var i = itemById(id); return i ? itemDoc(i) : null; });
+  }
+  function saveFee(id, delay){
+    persist('fees/' + id, function(){ var f = feeById(id); return f ? feeDoc(f) : null; }, delay);
+  }
+  function saveEvent(id, delay){
+    persist('events/' + id, function(){ var e = eventById(id); return e ? eventDoc(e) : null; }, delay);
+  }
+  function saveRecord(id){
+    persist('records/' + id, function(){
+      var r = state.records.find(function(x){ return x.id === id; });
+      return r ? recordDoc(r) : null;
+    }, 0);
+  }
+
+  /* ---------- スナップショット ---------- */
+  function applyMenuSnap(snap){
+    var incoming = snap.docs.map(function(d){ return normMenu(d.id, d.data() || {}); })
+      .filter(function(m){ return !pending.has('menu/' + m.id); });
+    var keep = state.menu.filter(function(m){ return pending.has('menu/' + m.id); });
+    state.menu = incoming.concat(keep);
+  }
+  function applyItemSnap(snap){
+    var incoming = snap.docs.map(function(d){ return normItem(d.id, d.data() || {}); })
+      .filter(function(i){ return !pending.has('items/' + i.id); });
+    var keep = state.items.filter(function(i){ return pending.has('items/' + i.id); });
+    state.items = incoming.concat(keep);
+  }
+  function applyFeeSnap(snap){
+    var incoming = snap.docs.map(function(d){ return normFee(d.id, d.data() || {}); })
+      .filter(function(f){ return !pending.has('fees/' + f.id); });
+    var keep = state.fees.filter(function(f){ return pending.has('fees/' + f.id); });
+    state.fees = incoming.concat(keep);
+  }
+  function applyEventSnap(snap){
+    var incoming = snap.docs.map(function(d){ return normEvent(d.id, d.data() || {}); })
+      .filter(function(e){ return !pending.has('events/' + e.id); });
+    var keep = state.events.filter(function(e){ return pending.has('events/' + e.id); });
+    state.events = incoming.concat(keep);
+  }
+  function applyRecordSnap(snap){
+    var incoming = snap.docs.map(function(d){ return normRecord(d.id, d.data() || {}); })
+      .filter(function(r){ return !pending.has('records/' + r.id); });
+    var keep = state.records.filter(function(r){ return pending.has('records/' + r.id); });
+    state.records = incoming.concat(keep);
+    recordsChanged();
+  }
+  function scheduleRender(){
+    var a = document.activeElement;
+    if (a && a.matches && a.matches('#content input, #content select')){
+      needsRender = true;
+      updateHeader();
+      return;
+    }
+    render();
+  }
+  document.addEventListener('focusout', function(){
+    if (!needsRender) return;
+    setTimeout(function(){
+      var a = document.activeElement;
+      if (needsRender && !(a && a.matches && a.matches('#content input, #content select'))) render();
+    }, 300);
+  });
+
+  /* ---------- 描画 ---------- */
+  function render(){
+    needsRender = false;
+    $('#app').innerHTML = headerHTML() + tabsHTML() + '<div id="content">' + contentHTML() + '</div>';
+    setSave(state.save);
+  }
+  function updateHeader(){
+    var t = totalFinance(state.events);
+    var el = $('#head-total');
+    if (el){ el.textContent = yen(t.profit); el.classList.toggle('neg', t.profit < 0); }
+  }
+  function headerHTML(){
+    var t = totalFinance(state.events);
+    var total = state.tab === 'receive' ? '' :
+      '<div class="total"><div class="cap">累計利益(全イベント)</div>' +
+      '<div class="val' + (t.profit < 0 ? ' neg' : '') + '" id="head-total">' + yen(t.profit) + '</div></div>';
+    return '<header class="top">' +
+      '<div class="brand"><h1>ドリンク収支帳</h1><p>イベントごとのドリンク販売と利益の記録</p>' +
+      '<span class="save-status" id="save-status"></span></div>' + total + '</header>';
+  }
+  /* 画面は、使う順に3つの大きな区分にまとめる */
+  var GROUPS = [
+    {id: 'prep', label: '事前準備', sub: 'イベント前に決めておく', tabs: [['events', 'イベント'], ['menu', 'メニュー'], ['items', '仕入れ品'], ['fees', '参加費'], ['stock', '仕入れ・在庫']]},
+    {id: 'day', label: '当日受付', sub: '会場での受付とドリンク', tabs: [['receive', '受付']]},
+    {id: 'after', label: '精算・集計', sub: 'イベント後にお金をまとめる', tabs: [['expenses', '経費'], ['report', 'レポート'], ['backup', 'データ保存']]}
+  ];
+  var lastTab = {prep: 'events', day: 'receive', after: 'expenses'};
+  function groupOf(tab){
+    return GROUPS.filter(function(g){ return g.tabs.some(function(t){ return t[0] === tab; }); })[0] || GROUPS[0];
+  }
+  function tabsHTML(){
+    var g = groupOf(state.tab);
+    lastTab[g.id] = state.tab;
+    var main = '<div class="tabs main" role="tablist" aria-label="作業の区分">' + GROUPS.map(function(x, i){
+      return '<button class="gtab" role="tab" data-act="group" data-v="' + x.id + '" aria-selected="' + (x.id === g.id) + '"><span class="gnum">' + (i + 1) + '</span><span class="gtxt"><span class="gname">' + x.label + '</span><span class="gsub">' + x.sub + '</span></span></button>';
+    }).join('') + '</div>';
+    var sub = g.tabs.length > 1
+      ? '<div class="tabs sub" role="tablist" aria-label="' + g.label + 'の項目">' + g.tabs.map(function(t){
+          return '<button class="tab" role="tab" data-act="tab" data-v="' + t[0] + '" aria-selected="' + (state.tab === t[0]) + '">' + t[1] + '</button>';
+        }).join('') + '</div>'
+      : '';
+    return main + sub;
+  }
+  function contentHTML(){
+    var banner = '';
+    if (navigator.onLine === false){
+      banner += '<p class="banner">いま通信できません。入力は端末に残り、通信がつながると自動で保存されます。画面を閉じずにお使いください。</p>';
+    }
+    if (state.dbOk === false){
+      banner += '<p class="banner">この画面ではデータを保存できません。入力した内容は、画面を閉じると消えます。</p>';
+    }
+    if (!state.loaded && state.dbOk !== false){
+      return '<div class="panel"><div class="empty">データを読み込んでいます…</div></div>';
+    }
+    var body = '';
+    if (state.tab === 'events') body = eventsHTML();
+    else if (state.tab === 'stock') body = stockHTML();
+    else if (state.tab === 'receive') body = receiveHTML();
+    else if (state.tab === 'expenses') body = expensesHTML();
+    else if (state.tab === 'report') body = reportHTML();
+    else if (state.tab === 'fees') body = feesHTML();
+    else if (state.tab === 'items') body = itemsHTML();
+    else if (state.tab === 'backup') body = backupHTML();
+    else body = menuHTML();
+    return banner + body;
+  }
+  function formErr(scope){
+    return (state.formError && state.formError.scope === scope) ? '<p class="form-error" role="alert">' + esc(state.formError.msg) + '</p>' : '';
+  }
+  function confirmCell(kind, id){
+    return '<button class="link strong" data-act="' + kind + '-delete-yes" data-id="' + esc(id) + '">削除する</button>' +
+           '<button class="link" data-act="confirm-no">やめる</button>';
+  }
+  function isConfirm(kind, id){ return state.confirm && state.confirm.kind === kind && state.confirm.id === id; }
+  function eventSelect(id, current, label){
+    return '<div class="field select-wrap"><label for="' + id + '">' + (label || 'イベントを選ぶ') + '</label><select id="' + id + '" data-sel="' + id + '">' +
+      sortedEvents().map(function(e){
+        return '<option value="' + esc(e.id) + '"' + (e.id === current ? ' selected' : '') + '>' + esc(e.name) + '(' + fmtDate(e.date) + ')</option>';
+      }).join('') + '</select></div>';
+  }
+
+    /* --- イベント --- */
+  function evStyle(ev){ return !ev ? 'ticket' : (ev.oneDrink ? 'ticket' : (ev.firstPaid ? 'first' : 'plain')); }
+  function eventsHTML(){
+    var editing = state.editingEventId ? eventById(state.editingEventId) : null;
+    var rows = sortedEvents();
+    var form =
+      '<div class="panel"><h2>' + (editing ? 'イベントを編集' : 'イベントを追加') + '</h2>' +
+      (editing ? '' : '<p class="note">追加すると、今のメニューが全部「出すドリンク」になります。出さないものや仕入れ数は「仕入れ・在庫」で設定します。</p>') +
+      '<div class="fields">' +
+        '<div class="field"><label for="ev-name">イベント名</label><input type="text" id="ev-name" data-enter="ev-save" placeholder="例:秋の見学会" value="' + esc(editing ? editing.name : '') + '"></div>' +
+        '<div class="field"><label for="ev-date">開催日</label><input type="date" id="ev-date" data-enter="ev-save" value="' + esc(editing ? editing.date : todayStr()) + '"></div>' +
+        '<div class="field"><label for="ev-venue">会場</label><input type="text" id="ev-venue" data-enter="ev-save" placeholder="例:事務所2階" value="' + esc(editing ? editing.venue : '') + '"></div>' +
+      '</div>' +
+      '<div class="fields" style="margin-top:14px">' +
+        '<div class="field"><label for="ev-style">ドリンクの料金の形式</label><select id="ev-style">' +
+          [['ticket', 'ワンドリンク込み(参加費・チケット代に1杯目が含まれる)'], ['first', 'ワンドリンク制(1杯目は購入。おかわりと価格を分けられる)'], ['plain', '都度払い(1杯ごとに購入)']].map(function(o){
+            return '<option value="' + o[0] + '"' + (evStyle(editing) === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+          }).join('') + '</select></div>' +
+        '<div class="field"><label for="ev-own">自分たちの名前(レポートの表示用)</label><input type="text" id="ev-own" data-enter="ev-save" placeholder="例:YAP" value="' + esc(editing ? editing.ownName : '') + '"></div>' +
+        '<div class="field"><label for="ev-partner">お金を分ける相手(なければ空欄)</label><input type="text" id="ev-partner" data-enter="ev-save" placeholder="例:竹村さん" value="' + esc(editing ? editing.partner : '') + '"></div>' +
+      '</div>' +
+      '<p class="note" style="margin:6px 0 0">「ワンドリンク込み」は、参加費・チケット代を受け取って、1杯目は無料で渡す形です(参加費は「参加費」タブで設定します)。「ワンドリンク制」は、1杯目も購入してもらう形です。どちらも、受付に「1杯目」のチェック欄が出ます。ゲストの持ち込み(ワインなど)や、チケット代を分ける場合は、相手の名前を入れておくと、レポートで「相手に渡す金額」が出ます。分け方は、「参加費」と「メニュー」で設定します。</p>' +
+      formErr('event') +
+      '<div class="actions"><button class="btn btn-primary" data-act="ev-save">' + (editing ? '更新する' : '追加する') + '</button>' +
+      (editing ? '<button class="btn btn-quiet" data-act="ev-cancel">キャンセル</button>' : '') + '</div></div>';
+
+    var list;
+    if (!rows.length){
+      list = '<div class="empty">まだイベントがありません。上の欄に名前と開催日を入れて「追加する」を押してください。</div>';
+    } else {
+      list = '<div class="table-wrap"><table><thead><tr><th>イベント名</th><th>開催日</th><th>会場</th><th>形式</th><th class="num">来場</th><th class="num">利益</th><th></th></tr></thead><tbody>' +
+        rows.map(function(ev){
+          var f = eventFinance(ev);
+          return '<tr><td>' + esc(ev.name) + (ev.partner ? '<div class="s-sub">分ける相手: ' + esc(ev.partner) + '</div>' : '') + '</td><td>' + fmtDate(ev.date) + '</td><td>' + esc(ev.venue || '―') + '</td><td>' + {ticket: 'ワンドリンク込み', first: '1杯目は購入', plain: '都度払い'}[evStyle(ev)] + '</td>' +
+            '<td class="num">' + f.visitors + '人</td><td class="num">' + yen(f.profit) + '</td><td><div class="row-actions">' +
+            (isConfirm('ev', ev.id)
+              ? confirmCell('ev', ev.id)
+              : '<button class="link" data-act="ev-edit" data-id="' + esc(ev.id) + '">編集</button><button class="link danger" data-act="ev-delete" data-id="' + esc(ev.id) + '">削除</button>') +
+            '</div></td></tr>';
+        }).join('') + '</tbody></table></div>';
+    }
+    return form + '<div class="panel"><h2>登録済みのイベント</h2>' + list +
+      (state.confirm && state.confirm.kind === 'ev' ? '<p class="note" style="margin:14px 0 0">削除すると、このイベントの受付の記録と経費も消えます。</p>' : '') + '</div>';
+  }
+
+  /* --- 参加費 --- */
+  function feesHTML(){
+    var fees = sortedFees();
+    var rows;
+    if (!fees.length){
+      rows = '<div class="empty">参加費がまだありません。下の欄から、学生・大人などの種類と金額を追加してください。</div>';
+    } else {
+      rows = '<div class="table-wrap"><table><thead><tr><th>名前</th><th>区分(集計用)</th><th class="num">参加費(1人)</th><th class="num">うち相手の取り分(1人)</th><th>標準で表示</th><th></th></tr></thead><tbody>' +
+        fees.map(function(f){
+          return '<tr><td><input type="text" class="tin wide" aria-label="参加費の名前" data-ff="name" data-id="' + esc(f.id) + '" value="' + esc(f.name) + '"></td>' +
+            '<td><select class="tsel" aria-label="' + esc(f.name) + 'の区分" data-ff="o" data-id="' + esc(f.id) + '">' +
+              '<option value=""' + (f.o ? '' : ' selected') + '>指定しない</option>' +
+              ATTRS[1].opts.map(function(o){ return '<option value="' + o[0] + '"' + (f.o === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></td>' +
+            '<td class="num"><input type="number" class="tin" min="0" step="1" inputmode="numeric" aria-label="' + esc(f.name) + 'の参加費" data-ff="price" data-id="' + esc(f.id) + '" value="' + f.price + '"></td>' +
+            '<td class="num"><input type="number" class="tin" min="0" step="1" inputmode="numeric" aria-label="' + esc(f.name) + 'のうち相手の取り分" data-ff="share" data-id="' + esc(f.id) + '" value="' + (f.share || '') + '" placeholder="0"></td>' +
+            '<td><label class="inline-chk"><input type="checkbox" data-ff="std" data-id="' + esc(f.id) + '"' + (f.std ? ' checked' : '') + ' aria-label="' + esc(f.name) + 'を新しいイベントで標準に表示する"><span>' + (f.std ? '表示する' : '表示しない') + '</span></label></td>' +
+            '<td><div class="row-actions">' + (isConfirm('fee', f.id) ? confirmCell('fee', f.id) : '<button class="link danger" data-act="fee-delete" data-id="' + esc(f.id) + '">削除</button>') + '</div></td></tr>';
+        }).join('') + '</tbody></table></div>';
+    }
+    var typeOpts = '<option value="">指定しない</option>' + ATTRS[1].opts.map(function(o){ return '<option value="' + o[0] + '">' + o[1] + '</option>'; }).join('');
+    var settings = '<div class="panel"><h2>参加費の初期設定</h2>' +
+      '<p class="note">ワンドリンク制のイベントで、受付が「1杯目」のときに使う参加費です。学生・大人のほか、「○○大学生は無料」のような特別な種類も、金額0円で追加できます。「区分」は来場者の集計用で、学生か社会人かを選びます。金額を変えても、記録済みの受付には影響しません。チケット代の一部を相手に渡す場合(例:1,000円のうち500円)は、「うち相手の取り分」に1人あたりの金額を入れます。通常のイベントでは空欄のままで大丈夫です。</p>' +
+      rows +
+      '<div class="divider"></div><h3>参加費の種類を追加</h3>' +
+      '<div class="fields">' +
+        '<div class="field"><label for="fee-name">名前</label><input type="text" id="fee-name" data-enter="fee-add" placeholder="例:学生、大人、○○大学生(無料)"></div>' +
+        '<div class="field"><label for="fee-o">区分(集計用)</label><select id="fee-o">' + typeOpts + '</select></div>' +
+        '<div class="field"><label for="fee-price">参加費(1人・円)</label><input type="number" id="fee-price" min="0" step="1" inputmode="numeric" data-enter="fee-add" placeholder="無料なら0"></div>' +
+        '<div class="field"><label for="fee-share">うち相手の取り分(1人・円)</label><input type="number" id="fee-share" min="0" step="1" inputmode="numeric" data-enter="fee-add" placeholder="なければ空欄"></div>' +
+        '<button class="btn btn-primary" data-act="fee-add">追加する</button></div>' + formErr('fee') + '</div>';
+
+    var ev = pickEvent('feeEventId');
+    var perEvent = '';
+    if (ev && fees.length){
+      var on = eventFees(ev).map(function(f){ return f.id; });
+      perEvent = '<div class="panel"><h2>イベントごとに使う参加費</h2>' +
+        '<p class="note">受付に出す参加費の種類を、イベントごとに選べます。新しいイベントでは、上で「標準で表示」にしたものが選ばれます。</p>' +
+        eventSelect('fee-event', ev.id) +
+        '<div class="fee-pick">' + fees.map(function(f){
+          return '<label class="one-opt"><input type="checkbox" data-feechk="' + esc(f.id) + '"' + (on.indexOf(f.id) !== -1 ? ' checked' : '') + '><span>' + esc(f.name) + ' <span class="soft">' + yen(f.price) + '</span></span></label>';
+        }).join('') + '</div></div>';
+    }
+    return settings + perEvent;
+  }
+
+  /* --- データ保存(書き出し・取り込み) --- */
+  function pad2(n){ return (n < 10 ? '0' : '') + n; }
+  function stamp(t){
+    var d = new Date(t);
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  }
+  function csvCell(v){ v = String(v === null || v === undefined ? '' : v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  function toCsv(rows){ return '﻿' + rows.map(function(r){ return r.map(csvCell).join(','); }).join('\r\n') + '\r\n'; }
+  function download(name, text, type){
+    var blob = new Blob([text], {type: type});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 1500);
+  }
+  function backupObject(){
+    function wrap(list, docFn){ return list.map(function(x){ return {id: x.id, data: docFn(x)}; }); }
+    return {app: 'drink-ledger', version: 1, exportedAt: new Date().toISOString(),
+      menu: wrap(state.menu, menuDoc), items: wrap(state.items, itemDoc), fees: wrap(state.fees, feeDoc), events: wrap(state.events, eventDoc), records: wrap(state.records, recordDoc)};
+  }
+  function recordsCsv(){
+    var rows = [['日時', 'イベント', '受付の種類', '人数', '人数の内訳', 'ドリンク', '杯数', '金額(円)', '相手に渡す金額(円)']];
+    var kindText = {entry: '1杯目(参加費)', first: '1杯目(ドリンク購入)', extra: '2杯目以降', '': '通常'};
+    state.records.slice().sort(function(a, b){ return a.t - b.t; }).forEach(function(r){
+      var ev = eventById(r.eventId), sp0 = recSplit(r);
+      var cups = 0, drinkAmt = 0;
+      var items = Object.keys(r.items).filter(function(id){ return r.items[id] > 0; }).map(function(id){
+        var d = drinkById(id), q = Math.floor(num(r.items[id]));
+        var price = (r.prices[id] !== undefined) ? num(r.prices[id]) : (d ? d.price : 0);
+        cups += q; drinkAmt += price * q;
+        return (d ? d.name : (r.names[id] || '削除したドリンク')) + '×' + q;
+      }).join(' / ');
+      var who = Object.keys(r.people).filter(function(k){ return r.people[k] > 0; }).map(function(k){ return personLabel(k, r) + '×' + r.people[k]; }).join(' / ');
+      rows.push([stamp(r.t), ev ? ev.name : '(削除したイベント)', kindText[r.kind || ''], peopleTotal(r.people), who, items, cups, r.kind === 'entry' ? sp0.fee + sp0.sur : drinkAmt, sp0.feeP + sp0.drinkP + sp0.surP]);
+    });
+    return toCsv(rows);
+  }
+  function eventsCsv(){
+    var rows = [['イベント', '開催日', '会場', '来場者', '杯数', '参加費収入', 'ドリンク売上', '追加料金', '預かった金額', '相手に渡す金額', '自分たちの売上', 'ドリンク原価', '経費(自分たちの負担)', '利益(自分たち)', '相手側の収益', '現金の収支']];
+    sortedEvents().forEach(function(e){
+      var f = eventFinance(e);
+      rows.push([e.name, e.date, e.venue, f.visitors, f.cups, f.entry, f.drinkRev, f.surcharge, f.revenue, f.partnerRev, f.ownRev, f.cost, f.expense, f.profit, f.partnerProfit, f.cash]);
+    });
+    return toCsv(rows);
+  }
+  function backupHTML(){
+    var imp = state.importData;
+    var impHTML = '';
+    if (state.importMsg) impHTML += '<p class="form-error" role="alert">' + esc(state.importMsg) + '</p>';
+    if (imp){
+      impHTML += '<div class="imp-box"><div>このファイルの内容: メニュー ' + imp.menu.length + '件 ・ 仕入れ品 ' + imp.items.length + '件 ・ 参加費 ' + imp.fees.length + '件 ・ イベント ' + imp.events.length + '件 ・ 受付の記録 ' + imp.records.length + '件' +
+        (imp.exportedAt ? '(' + esc(stamp(Date.parse(imp.exportedAt))) + ' 書き出し)' : '') + '</div>' +
+        '<div style="margin-top:6px">同じ項目がすでにある場合は、ファイルの内容で上書きされます。</div>' +
+        '<div class="actions"><button class="btn btn-primary" data-act="imp-go">取り込む</button><button class="btn btn-quiet" data-act="imp-cancel">やめる</button></div></div>';
+    }
+    var logout = window.APP_SIGNOUT
+      ? '<div class="panel"><h2>ログアウト</h2><p class="note">' + (window.APP_USER ? 'ログイン中: ' + esc(window.APP_USER) + '。' : '') + '共有の端末で使い終わったときに使います。当日の受付端末では、押さないでください(次回、またパスワードが必要になります)。</p>' +
+        '<button class="btn btn-quiet" data-act="signout">ログアウトする</button></div>'
+      : '';
+    return '<div class="panel"><h2>データの書き出し</h2>' +
+      '<p class="note">データはクラウドに保存されています。念のため、イベントのあとにファイルへ書き出しておくと安心です。「全データ」は、あとで取り込み直せます。「記録の一覧」「イベント別の集計」は、Excelなどで開けます。</p>' +
+      '<div class="actions" style="display:flex;gap:10px;flex-wrap:wrap">' +
+      '<button class="btn btn-primary" data-act="export-json">全データを書き出す</button>' +
+      '<button class="btn btn-quiet" data-act="export-records">記録の一覧(CSV)</button>' +
+      '<button class="btn btn-quiet" data-act="export-events">イベント別の集計(CSV)</button></div></div>' +
+      '<div class="panel"><h2>ファイルから取り込む</h2>' +
+      '<p class="note">「全データを書き出す」で作ったファイルを選ぶと、中身を確認してから取り込めます。</p>' +
+      '<input type="file" class="file-in" accept=".json,application/json" data-imp="1" aria-label="取り込むファイルを選ぶ">' + impHTML + '</div>' + logout;
+  }
+  function upsert(list, item){
+    var i = -1;
+    list.forEach(function(x, k){ if (x.id === item.id) i = k; });
+    if (i >= 0) list[i] = item; else list.push(item);
+  }
+
+    /* --- メニュー --- */
+  function recipeText(m){
+    return activeRecipe(m).map(function(x){
+      var it = itemById(x.itemId);
+      return esc(it.name) + ' ' + fq(x.amount) + esc(it.mu);
+    }).join(' + ');
+  }
+  /* 原価の欄(材料があるときは自動計算の結果を出す) */
+  function costInner(m){
+    var c = drinkCost(m);
+    var txt = c === null ? '―' : yen(c);
+    var small = hasRecipe(m) ? (drinkCostPartial(m) ? '一部の値段が未入力' : '材料から計算') : '材料の量を入れてください';
+    return txt + '<small>' + small + '</small>';
+  }
+  function rcupText(x){
+    var it = itemById(x.itemId);
+    if (!it || !(x.amount > 0)) return '';
+    return '1' + esc(it.unit) + 'で約' + fq(itemSize(it) / x.amount) + '杯';
+  }
+  function recipeBoxHTML(m){
+    var items = sortedItems();
+    var body;
+    if (!items.length){
+      body = '<p class="note" style="margin:0 0 10px">先に「仕入れ品」タブで、ウイスキーや炭酸水などの材料を登録してください。</p>' +
+        '<div class="actions" style="margin:0"><button class="btn btn-quiet" data-act="tab" data-v="items">仕入れ品を登録する</button><button class="btn btn-quiet" data-act="recipe-done">閉じる</button></div>';
+    } else {
+      body = (m.recipe.length ? m.recipe.map(function(x, i){
+        var it = itemById(x.itemId);
+        return '<div class="rrow">' +
+          '<select aria-label="材料" data-rsel="' + esc(m.id) + '" data-i="' + i + '">' + (it ? '' : '<option value="" selected>(選んでください)</option>') +
+            items.map(function(o){ return '<option value="' + esc(o.id) + '"' + (it && o.id === it.id ? ' selected' : '') + '>' + esc(o.name) + '</option>'; }).join('') + '</select>' +
+          '<input type="number" min="0" step="any" inputmode="decimal" aria-label="1杯あたりの量" placeholder="量" data-ramt="' + esc(m.id) + '" data-i="' + i + '" value="' + (x.amount > 0 ? x.amount : '') + '">' +
+          '<span class="rmu">' + esc(it ? it.mu : '') + ' / 杯</span>' +
+          '<span class="rcup" id="rcup-' + esc(m.id) + '-' + i + '">' + rcupText(x) + '</span>' +
+          '<button class="link danger" data-act="recipe-del" data-id="' + esc(m.id) + '" data-i="' + i + '">外す</button></div>';
+      }).join('') : '<p class="note" style="margin:0 0 6px">材料を追加してください。材料を1つも入れないときは、1杯=1本として数えます。</p>') +
+        '<div class="actions" style="margin:10px 0 0"><button class="btn btn-quiet" data-act="recipe-add" data-id="' + esc(m.id) + '">＋ 材料を追加</button>' +
+        '<button class="btn btn-primary" data-act="recipe-done">完了</button></div>';
+    }
+    return '<div class="recipe-box"><h4>「' + esc(m.name) + '」の材料(1杯あたりの量)</h4>' + body + '</div>';
+  }
+  function grossText(m){
+    if (m.payee === 'partner') return '相手へ';
+    var c = drinkCost(m);
+    return c === null ? '―' : yen(m.price - c);
+  }
+  function optText(m){
+    var p = [];
+    if (m.priceRefill !== null && m.priceRefill !== undefined) p.push('おかわり ' + yen(m.priceRefill));
+    if (m.entryExtra > 0) p.push('ワンドリンク込みの追加料金 +' + yen(m.entryExtra));
+    if (m.payee === 'partner') p.push('売上は相手のもの');
+    return p.length ? p.join(' / ') : '標準(おかわりも同じ価格・売上は自分たち)';
+  }
+  function optBoxHTML(m){
+    return '<div class="recipe-box"><h4>「' + esc(m.name) + '」の価格のくわしい設定</h4><div class="fields">' +
+      '<div class="field"><label for="of-r-' + esc(m.id) + '">おかわり価格(2杯目以降)</label><input type="number" id="of-r-' + esc(m.id) + '" min="0" step="1" inputmode="numeric" placeholder="空欄なら同じ" data-mf="priceRefill" data-id="' + esc(m.id) + '" value="' + (m.priceRefill === null || m.priceRefill === undefined ? '' : m.priceRefill) + '"></div>' +
+      '<div class="field"><label for="of-e-' + esc(m.id) + '">ワンドリンク込みのときの追加料金</label><input type="number" id="of-e-' + esc(m.id) + '" min="0" step="1" inputmode="numeric" placeholder="なければ空欄" data-mf="entryExtra" data-id="' + esc(m.id) + '" value="' + (m.entryExtra > 0 ? m.entryExtra : '') + '"></div>' +
+      '<div class="field"><label for="of-p-' + esc(m.id) + '">売上の行き先</label><select id="of-p-' + esc(m.id) + '" data-mp="payee" data-id="' + esc(m.id) + '">' +
+        '<option value="own"' + (m.payee === 'partner' ? '' : ' selected') + '>自分たち</option><option value="partner"' + (m.payee === 'partner' ? ' selected' : '') + '>相手(持ち込みのドリンクなど)</option></select></div></div>' +
+      '<p class="note" style="margin:10px 0 0">「おかわり価格」は、受付で「1杯目」のチェックを外したときの価格です。「追加料金」は、チケット代・参加費にドリンクが含まれるイベントで、このドリンクを選んだ人から追加でもらう金額です。「相手」にすると、この売上と追加料金は相手に渡す金額になり、こちらの原価は0円として計算します。</p>' +
+      '<div class="actions" style="margin:10px 0 0"><button class="btn btn-primary" data-act="opt-done">完了</button></div></div>';
+  }
+  function menuHTML(){
+    var items = sortedMenu();
+    var list;
+    if (!items.length){
+      list = '<div class="empty">メニューがまだありません。下の欄からドリンクを追加してください。</div>';
+    } else {
+      list = '<div class="menu-head"><div>ドリンク名</div><div>販売価格(1杯)</div><div>原価(1杯)</div><div class="num">粗利/杯</div><div></div></div>' +
+        items.map(function(m){
+          var costCell = m.payee === 'partner'
+            ? '<div class="auto-cost"><span class="cap-m">原価(1杯)</span><span>―<small>相手の持ち込み</small></span></div>'
+            : m.recipe.length
+            ? '<div class="auto-cost"><span class="cap-m">原価(1杯)</span><span id="cost-' + esc(m.id) + '">' + costInner(m) + '</span></div>'
+            : '<div><span class="cap-m">原価(1杯)</span><input type="number" min="0" step="1" inputmode="numeric" aria-label="原価" placeholder="未入力" data-mf="cost" data-id="' + esc(m.id) + '" value="' + (m.cost === null ? '' : m.cost) + '"></div>';
+          var rl = state.recipeEdit === m.id ? recipeBoxHTML(m)
+            : '<div class="recipe-line"><span class="rt">' + (hasRecipe(m) ? '材料: ' + recipeText(m) : '材料: 登録なし(1杯=1本として数えます)') + '</span>' +
+              '<button class="link" data-act="recipe-edit" data-id="' + esc(m.id) + '">' + (m.recipe.length ? '材料を編集' : '材料から作る場合はこちら') + '</button></div>';
+          return '<div class="menu-item"><div class="menu-row">' +
+            '<div class="m-name"><span class="cap-m">ドリンク名</span><input type="text" aria-label="ドリンク名" data-mf="name" data-id="' + esc(m.id) + '" value="' + esc(m.name) + '"></div>' +
+            '<div><span class="cap-m">販売価格(1杯)</span><input type="number" min="0" step="1" inputmode="numeric" aria-label="販売価格" data-mf="price" data-id="' + esc(m.id) + '" value="' + m.price + '"></div>' +
+            costCell +
+            '<div class="gross"><span class="cap-m">粗利/杯</span><span id="gross-' + esc(m.id) + '">' + grossText(m) + '</span></div>' +
+            '<div class="row-actions">' + (isConfirm('menu', m.id) ? confirmCell('menu', m.id) : '<button class="link danger" data-act="menu-delete" data-id="' + esc(m.id) + '">削除</button>') + '</div>' +
+            '</div>' + rl + (state.optEdit === m.id ? optBoxHTML(m) : '<div class="opt-line"><span class="rt">価格の設定: ' + esc(optText(m)) + '</span><button class="link" data-act="opt-edit" data-id="' + esc(m.id) + '">価格のくわしい設定</button></div>') + '</div>';
+        }).join('');
+    }
+    return '<div class="panel"><h2>メニュー</h2>' +
+      '<p class="note">イベントで出すドリンクの一覧です。価格や原価は直接書き換えられます。価格を変えても、すでに記録した売上は、記録した時点の価格のままです。原価は、変えると過去の分も新しい値で計算し直されます。缶ビールのように1杯=1本のものは、原価を入れるだけで使えます。ウイスキーと炭酸水のハイボール、大きなボトルのジンジャエールのように、1本から何杯も作るものは、「材料から作る場合はこちら」で、1杯あたりの量を設定します(先に「仕入れ品」タブで材料を登録します)。</p>' +
+      list +
+      (state.confirm && state.confirm.kind === 'menu' ? '<p class="note" style="margin:14px 0 0">削除すると、過去イベントの原価計算からこのドリンクが外れます(売上は残ります)。</p>' : '') +
+      '</div>' +
+      '<div class="panel"><h2>ドリンクを追加</h2><div class="add-row">' +
+        '<div class="field"><label for="mn-name">ドリンク名</label><input type="text" id="mn-name" data-enter="menu-add" placeholder="例:ウーロン茶"></div>' +
+        '<div class="field"><label for="mn-price">販売価格(1杯)</label><input type="number" id="mn-price" min="0" step="1" inputmode="numeric" data-enter="menu-add" placeholder="例:300"></div>' +
+        '<div class="field"><label for="mn-cost">原価(1杯)</label><input type="number" id="mn-cost" min="0" step="1" inputmode="numeric" data-enter="menu-add" placeholder="未入力でも可"></div>' +
+        '<button class="btn btn-primary" data-act="menu-add">追加する</button></div>' + formErr('menu') + '</div>';
+  }
+
+  /* --- 仕入れ品(材料) --- */
+  function itemUses(it){
+    var out = [];
+    state.menu.forEach(function(d){
+      (d.recipe || []).forEach(function(x){
+        if (x.itemId === it.id && x.amount > 0) out.push(esc(d.name) + ' ' + fq(x.amount) + esc(it.mu) + '/杯(1' + esc(it.unit) + 'で約' + fq(itemSize(it) / x.amount) + '杯)');
+      });
+    });
+    return out;
+  }
+  function itemsHTML(){
+    var items = sortedItems();
+    var list;
+    if (!items.length){
+      list = '<div class="empty">仕入れ品がまだありません。ウイスキー・炭酸水・ジンジャエールのように、1本から何杯も作る材料を、下の欄から登録してください。缶ビールのように1杯=1本で数えるものは、登録しなくても使えます。</div>';
+    } else {
+      list = '<div class="item-head"><div>品名</div><div>買う単位</div><div>1単位の量</div><div>量の単位</div><div>1単位の値段(円)</div><div>使っているドリンク</div><div></div></div>' +
+        items.map(function(it){
+          var uses = itemUses(it);
+          return '<div class="item-row">' +
+            '<div><span class="cap-m">品名</span><input type="text" aria-label="品名" data-if="name" data-id="' + esc(it.id) + '" value="' + esc(it.name) + '"></div>' +
+            '<div><span class="cap-m">買う単位</span><input type="text" list="unit-list" aria-label="買う単位" data-if="unit" data-id="' + esc(it.id) + '" value="' + esc(it.unit) + '"></div>' +
+            '<div><span class="cap-m">1単位の量</span><input type="number" min="0" step="any" inputmode="decimal" aria-label="1単位の量" data-if="size" data-id="' + esc(it.id) + '" value="' + it.size + '"></div>' +
+            '<div><span class="cap-m">量の単位</span><input type="text" list="mu-list" aria-label="量の単位" data-if="mu" data-id="' + esc(it.id) + '" value="' + esc(it.mu) + '"></div>' +
+            '<div><span class="cap-m">1単位の値段(円)</span><input type="number" min="0" step="1" inputmode="numeric" aria-label="1単位の値段" placeholder="未入力" data-if="price" data-id="' + esc(it.id) + '" value="' + (it.price === null ? '' : it.price) + '"></div>' +
+            '<div class="i-uses"><span class="cap-m">使っているドリンク</span>' + (uses.length ? uses.join('<br>') : '<span class="soft" style="margin:0">まだ使っていません</span>') + '</div>' +
+            '<div class="row-actions">' + (isConfirm('item', it.id) ? confirmCell('item', it.id) : '<button class="link danger" data-act="item-delete" data-id="' + esc(it.id) + '">削除</button>') + '</div>' +
+            '</div>';
+        }).join('');
+    }
+    return '<div class="panel"><h2>仕入れ品(材料)</h2>' +
+      '<p class="note">買ってくる材料を登録します。「買う単位」は、買うときの数え方(本・缶・パックなど)、「1単位の量」は、その中身の量です。例: ウイスキー 1本=700ml・¥1,800、炭酸水 1本=500ml・¥100、ジンジャエール 1本=1500ml・¥200。登録したら、「メニュー」タブで、ドリンクごとに1杯あたりの量(例: ハイボール=ウイスキー30ml+炭酸水120ml)を設定します。1杯の原価と、1本で作れる杯数は、自動で計算されます。</p>' +
+      '<datalist id="unit-list"><option value="本"><option value="缶"><option value="パック"><option value="箱"><option value="袋"></datalist>' +
+      '<datalist id="mu-list"><option value="ml"><option value="g"><option value="個"><option value="枚"></datalist>' +
+      list +
+      (state.confirm && state.confirm.kind === 'item' ? '<p class="note" style="margin:14px 0 0">削除すると、ドリンクの材料からも外れます(過去の記録の売上は残ります)。</p>' : '') +
+      '</div>' +
+      '<div class="panel"><h2>仕入れ品を追加</h2><div class="add-item">' +
+        '<div class="field"><label for="it-name">品名</label><input type="text" id="it-name" data-enter="item-add" placeholder="例:ジンジャエール"></div>' +
+        '<div class="field"><label for="it-unit">買う単位</label><input type="text" id="it-unit" list="unit-list" data-enter="item-add" value="本"></div>' +
+        '<div class="field"><label for="it-size">1単位の量</label><input type="number" id="it-size" min="0" step="any" inputmode="decimal" data-enter="item-add" placeholder="例:1500"></div>' +
+        '<div class="field"><label for="it-mu">量の単位</label><input type="text" id="it-mu" list="mu-list" data-enter="item-add" value="ml"></div>' +
+        '<div class="field"><label for="it-price">1単位の値段(円)</label><input type="number" id="it-price" min="0" step="1" inputmode="numeric" data-enter="item-add" placeholder="例:200"></div>' +
+        '<button class="btn btn-primary" data-act="item-add">追加する</button></div>' + formErr('item') + '</div>';
+  }
+
+  /* --- 仕入れ・在庫 --- */
+  function stockHTML(){
+    var ev = pickEvent('stockEventId');
+    if (!ev) return '<div class="panel"><h2>仕入れ・在庫</h2><div class="empty">先に「イベント」タブでイベントを追加してください。</div></div>';
+    var menu = sortedMenu();
+    var sold = soldMap(ev.id);
+    var lines = stockLines(ev);
+
+    var hint = '';
+    var prev = prevStockEvent(ev);
+    if (prev){
+      var lo = leftoversOf(prev);
+      var parts = Object.keys(lo).map(function(key){
+        var inf = keyInfo(key);
+        return inf ? esc(inf.name) + ' ' + fq(lo[key]) + esc(inf.unit) : '';
+      }).filter(Boolean);
+      if (parts.length){
+        hint = '<div class="carry-hint"><div>前回のイベント「' + esc(prev.name) + '」(' + fmtDate(prev.date) + ')の残り:<strong> ' + parts.join('、') + '</strong></div>' +
+          '<button class="btn btn-quiet" data-act="carry-fill">この数を持ち越しに入れる</button></div>';
+      }
+    }
+
+    /* 1) 出すドリンクと、想定する杯数 */
+    var drinkRows;
+    if (!menu.length){
+      drinkRows = '<div class="empty">メニューがありません。「メニュー」タブでドリンクを追加してください。</div>';
+    } else {
+      drinkRows = menu.map(function(m){
+        var on = ev.menuIds.indexOf(m.id) !== -1;
+        var pl = ev.plan[m.id] === undefined ? '' : ev.plan[m.id];
+        var how = hasRecipe(m) ? '材料: ' + recipeText(m) : '1杯=1本として数えます';
+        return '<div class="plan-row' + (on ? '' : ' is-off') + '">' +
+          '<label class="s-name"><input type="checkbox" data-chk="' + esc(m.id) + '"' + (on ? ' checked' : '') + '><span>' + esc(m.name) + '</span><span class="price">' + yen(m.price) + '</span></label>' +
+          '<div class="plan-how">' + how + '</div>' +
+          '<div><span class="cap-m">想定する杯数</span><input type="number" min="0" step="1" inputmode="numeric" aria-label="' + esc(m.name) + 'の想定する杯数" data-plan="' + esc(m.id) + '" placeholder="杯" value="' + pl + '"' + (on ? '' : ' disabled') + '></div>' +
+          '</div>';
+      }).join('');
+    }
+    var drinkPanel = '<div class="panel"><h2>このイベントで出すドリンク</h2>' +
+      '<p class="note">出すドリンクにチェックを入れます。「想定する杯数」は、何杯くらい出そうか、の見込みです(空欄でもかまいません)。入れると、下の「仕入れ・在庫」に、何本買えばよいかの目安が出ます。</p>' +
+      eventSelect('stock-event', ev.id) +
+      '<div class="plan-head"><div>ドリンク</div><div>数え方</div><div>想定する杯数</div></div>' + drinkRows + '</div>';
+
+    /* 2) 仕入れ・在庫(仕入れの単位ごと) */
+    var planAny = lines.some(function(l){ return planNeed(ev, l) > 0; });
+    var planHint = '<div class="carry-hint" id="plan-hint"' + (planAny ? '' : ' style="display:none"') + '><div>想定する杯数から、仕入れの目安を計算しました(前回からの持ち越し分は引いてあります)。少し余裕を見て、多めに買うのがおすすめです。</div>' +
+        '<button class="btn btn-quiet" data-act="stock-plan-fill">目安を「今回の仕入れ」に入れる</button></div>';
+    var rows;
+    if (!lines.length){
+      rows = '<div class="empty">出すドリンクにチェックを入れると、ここに仕入れの行が出ます。</div>';
+    } else {
+      rows = '<div class="stock-head"><div>仕入れ品・ドリンク</div><div>前回からの持ち越し</div><div>今回の仕入れ</div><div>買い出しライン</div><div class="num">使った</div><div class="num">残り</div><div>買い足した分</div></div>' +
+        lines.map(function(l){
+          var rem = lineRem(ev, l, sold), lv = lineLevel(ev, l, rem);
+          var u = esc(l.unit);
+          var remClass = lv === 'out' ? 'rem-out' : (lv === 'low' ? 'rem-low' : 'rem-ok');
+          var carryV = ev.carryIn[l.key] === undefined ? '' : ev.carryIn[l.key];
+          var stockV = ev.stock[l.key] === undefined ? '' : ev.stock[l.key];
+          var lineV = ev.alertAt[l.key] === undefined ? '' : ev.alertAt[l.key];
+          var k = esc(l.key);
+          var sub = l.kind === 'item'
+            ? '1' + u + '=' + fq(l.size) + esc(l.mu) + (l.price !== null ? '・' + yen(l.price) : '・値段未入力')
+            : '1杯=1' + u + (l.price !== null ? '・原価' + yen(l.price) : '・原価未入力');
+          var use = l.kind === 'item'
+            ? (l.uses.length ? '使う: ' + l.uses.map(function(x){ return esc(x.drink.name) + ' ' + fq(x.amount) + esc(l.mu); }).join('、') : '今回は使うドリンクが選ばれていません')
+            : '';
+          return '<div class="stock-row">' +
+            '<div class="s-name2"><div class="sn">' + esc(l.name) + '</div><div class="s-sub">' + sub + '</div>' + (use ? '<div class="s-sub">' + use + '</div>' : '') +
+              '<div class="s-need" id="need-' + k + '">' + needText(ev, l) + '</div></div>' +
+            '<div><span class="cap-m">前回からの持ち越し</span><input type="number" min="0" step="any" inputmode="decimal" aria-label="' + esc(l.name) + 'の前回からの持ち越し" data-carry="' + k + '" placeholder="' + u + '" value="' + carryV + '"></div>' +
+            '<div><span class="cap-m">今回の仕入れ</span><input type="number" min="0" step="1" inputmode="numeric" aria-label="' + esc(l.name) + 'の今回の仕入れ" data-stock="' + k + '" placeholder="' + u + '" value="' + stockV + '"></div>' +
+            '<div><span class="cap-m">買い出しライン</span><input type="number" min="0" step="any" inputmode="decimal" aria-label="' + esc(l.name) + 'の買い出しライン" data-line="' + k + '" placeholder="' + u + '" value="' + lineV + '"></div>' +
+            '<div class="num"><span class="cap-m">使った</span><span id="used-' + k + '">' + fq(lineUsed(l, sold)) + u + '</span></div>' +
+            '<div class="num ' + remClass + '" id="remw-' + k + '"><span class="cap-m">残り</span><span id="rem-' + k + '">' + (rem === null ? '―' : fq(rem) + u) + '</span><div class="s-sub" id="remc-' + k + '">' + lineCupsText(l, rem) + '</div></div>' +
+            '<div><span class="cap-m">買い足した分</span><div class="add-stock"><input type="number" min="1" step="1" inputmode="numeric" id="add-' + k + '" aria-label="' + esc(l.name) + 'の買い足した数" data-enter="stock-add" data-id="' + k + '" placeholder="' + u + '"><button class="btn btn-quiet" data-act="stock-add" data-id="' + k + '">追加</button></div></div>' +
+            '</div>';
+        }).join('');
+    }
+    return drinkPanel + '<div class="panel"><h2>仕入れ・在庫</h2>' +
+      '<p class="note">仕入れは、買うときの単位(本・缶など)で数えます。「持ち越し」は前回のイベントから残った数(開けた分は0.5本のように小数でも入れられます)、「今回の仕入れ」は今回新しく買った数です。残りは、持ち越し＋今回の仕入れ−使った分で計算します。ウイスキーや炭酸水などの材料は、売れた杯数と「1杯あたりの量」から、使った分を自動で計算します。「買い出しライン」は、残りがこの数以下になったら受付画面で知らせる目安です。途中で買い足したときは、数を入れて「追加」を押すと、今回の仕入れに足されます。</p>' +
+      hint + planHint + rows + '</div>';
+  }
+
+    /* --- 受付 --- */
+  /* 受付の形: entry=1杯目(参加費込み) / first=1杯目(ドリンクを購入) / extra=2杯目以降 / plain=都度払い */
+  function evMode(ev){
+    if (ev.oneDrink) return state.firstDrink ? 'entry' : 'extra';
+    if (ev.firstPaid) return state.firstDrink ? 'first' : 'extra';
+    return 'plain';
+  }
+  function receiveHTML(){
+    var ev = pickEvent('recvEventId');
+    if (!ev) return '<div class="panel"><h2>受付</h2><div class="empty">先に「イベント」タブでイベントを追加してください。</div></div>';
+    var drinks = eventDrinks(ev);
+    var sold = soldMap(ev.id);
+    var f = eventFinance(ev);
+    var cart = state.cart;
+    var mode = evMode(ev);
+    var fees = eventFees(ev);
+
+    var low = [];
+    stockLines(ev).forEach(function(l){
+      if (!l.uses.length) return;
+      var rem = lineRem(ev, l, sold), lv = lineLevel(ev, l, rem);
+      if (lv === 'low' || lv === 'out') low.push({l: l, rem: rem, lv: lv});
+    });
+    var alertHTML = low.length
+      ? '<div class="alert" role="alert">買い出しの目安になりました<ul>' + low.map(function(x){
+          var cupsTxt = lineCupsText(x.l, x.rem), u = esc(x.l.unit);
+          return '<li>' + esc(x.l.name) + ':' + (x.lv === 'out'
+            ? (x.l.kind === 'item' ? 'もう足りません(残り' + fq(Math.max(x.rem, 0)) + u + ')' : '在庫がありません')
+            : '残り' + fq(x.rem) + u + (cupsTxt ? '(' + cupsTxt + ')' : '')) + '</li>';
+        }).join('') + '</ul></div>'
+      : '';
+
+    var P = cart.people;
+    var peopleN = peopleTotal(P);
+    /* 1) 参加の種類(学生・社会人など)を選ぶ → 2) 性別を押して人数を数える */
+    var curFee = fees.filter(function(f){ return f.id === state.recvFee; })[0] || fees[0];
+    var feeTotals = {};
+    Object.keys(P).forEach(function(k){ var fid = k.split('|')[2]; if (fid && P[k] > 0) feeTotals[fid] = (feeTotals[fid] || 0) + P[k]; });
+    var feeSeg = '<div class="seg fee-seg" role="group" aria-label="参加の種類">' + fees.map(function(f){
+      var c = feeTotals[f.id] || 0;
+      return '<button data-act="recv-fee" data-id="' + esc(f.id) + '" aria-pressed="' + (f.id === curFee.id) + '"><span class="fs-name">' + esc(f.name) + '</span>' +
+        (mode === 'entry' ? '<span class="fs-price">' + yen(f.price) + '</span>' : '') +
+        (c ? '<span class="fs-n">' + c + '人</span>' : '') + '</button>';
+    }).join('') + '</div>';
+    function gcell(g){
+      var key = personKey(g[0], curFee.o, curFee.id), n = P[key] || 0;
+      var gl = g[1] || '指定しない';
+      var nm = gl + '(' + curFee.name + ')';
+      return '<div class="pcell' + (n > 0 ? ' on' : '') + '"><div class="pl">' + esc(gl) + '</div>' +
+        '<div class="pctl"><button data-act="person" data-k="' + esc(key) + '" data-d="-1" aria-label="' + esc(nm) + 'を1人減らす"' + (n > 0 ? '' : ' disabled') + '>−</button>' +
+        '<div class="n" aria-live="polite">' + n + '</div>' +
+        '<button class="plus" data-act="person" data-k="' + esc(key) + '" data-d="1" aria-label="' + esc(nm) + 'を1人増やす">＋</button></div></div>';
+    }
+    var gcells = ATTRS[0].opts.concat([['', '']]).map(gcell).join('');
+    var feeWarn = (mode === 'entry' && !sortedFees().length)
+      ? '<p class="banner">参加費がまだ設定されていません(今は0円で計算します)。「参加費」タブで、学生・社会人などの金額を設定してください。</p>' : '';
+    var attrHTML = mode === 'extra' ? '' : '<div class="people">' +
+      '<div class="people-head"><div class="gl"><span class="stepn">1</span>' + (mode === 'entry' ? '参加の種類を選ぶ' : '区分を選ぶ') + '<span class="ptotal">計' + peopleN + '人</span></div></div>' +
+      feeSeg +
+      '<div class="people-head" style="margin-top:18px"><div class="gl"><span class="stepn">2</span>性別を押して人数を数える<span class="soft">(' + esc(curFee.name) + ')</span></div></div>' +
+      '<div class="pgrid" style="--cols:3;--cols-s:3">' + gcells + '</div>' +
+      '<p class="attr-note">種類を選んでから、1人につき1回、性別の「＋」を押します。種類を変えると、別の種類の人数も続けて数えられます。押しすぎたときは「−」で減らせます。「記録する」を押すとリセットされます。</p></div>';
+
+    var cupsNow = Object.keys(cart.items).reduce(function(a, id){ return a + (cart.items[id] || 0); }, 0);
+    var capped = mode === 'entry' || mode === 'first';
+    var full = capped && cupsNow >= peopleN;
+    var cards;
+    if (!drinks.length){
+      cards = '<div class="empty">このイベントで出すドリンクが選ばれていません。「仕入れ・在庫」タブでチェックを入れてください。</div>';
+    } else {
+      cards = '<div class="drink-grid">' + drinks.map(function(m){
+        var st = stockState(ev, m.id, sold);
+        var n = cart.items[m.id] || 0;
+        var cls = 'drink' + (st.level === 'low' ? ' low' : '') + (st.level === 'out' ? ' out' : '') + (n > 0 ? ' in-cart' : '');
+        var remHTML, ru = hasRecipe(m) ? '杯分' : '本';
+        if (st.rem === null) remHTML = '<span><span class="lbl">残り</span>未設定</span>';
+        else if (st.level === 'out') remHTML = '<span class="out-t"><span class="lbl">残り</span>' + Math.max(st.rem, 0) + ru + '<span class="d-flag">在庫なし</span></span>';
+        else if (st.level === 'low') remHTML = '<span class="low-t"><span class="lbl">残り</span>' + st.rem + ru + '<span class="d-flag">買い出しの目安</span></span>';
+        else remHTML = '<span><span class="lbl">残り</span>' + st.rem + ru + '</span>';
+        return '<div class="' + cls + '">' +
+          '<div class="d-head"><div class="d-name">' + esc(m.name) + '</div><div class="d-price">' + (mode === 'entry' ? '参加費込み' + (m.entryExtra > 0 ? '<small class="d-extra">+' + yen(m.entryExtra) + '</small>' : '') : yen(drinkPrice(m, mode))) + '</div></div>' +
+          '<div class="d-stats"><span><span class="lbl">売れた</span>' + (sold[m.id] || 0) + '杯</span>' + remHTML + '</div>' +
+          '<div class="cartstep"><button data-act="cart" data-id="' + esc(m.id) + '" data-d="-1" aria-label="' + esc(m.name) + 'を1杯減らす"' + (n > 0 ? '' : ' disabled') + '>−</button>' +
+          '<div class="n" aria-live="polite">' + n + '</div>' +
+          '<button class="plus" data-act="cart" data-id="' + esc(m.id) + '" data-d="1" aria-label="' + esc(m.name) + 'を1杯増やす"' + (full ? ' disabled' : '') + '>＋</button></div></div>';
+      }).join('') + '</div>';
+    }
+
+    var cartItems = drinks.filter(function(m){ return (cart.items[m.id] || 0) > 0; });
+    var cartCups = cartItems.reduce(function(a, m){ return a + cart.items[m.id]; }, 0);
+    var feeCount = {};
+    Object.keys(P).forEach(function(k){ var fid = k.split('|')[2]; if (fid && P[k] > 0) feeCount[fid] = (feeCount[fid] || 0) + P[k]; });
+    var feeLines = Object.keys(feeCount).map(function(fid){ var fe = feeFor(fid); return fe ? {name: fe.name, n: feeCount[fid], sub: fe.price * feeCount[fid], price: fe.price} : null; }).filter(Boolean);
+    var surLines = mode === 'entry' ? cartItems.filter(function(m){ return m.entryExtra > 0; }).map(function(m){
+      return {name: m.name, n: cart.items[m.id], unit: m.entryExtra, sub: m.entryExtra * cart.items[m.id]};
+    }) : [];
+    var feePay = feeLines.reduce(function(a, x){ return a + x.sub; }, 0);
+    var surPay = surLines.reduce(function(a, x){ return a + x.sub; }, 0);
+    var pay = mode === 'entry' ? feePay + surPay
+      : cartItems.reduce(function(a, m){ return a + drinkPrice(m, mode) * cart.items[m.id]; }, 0);
+    var canSave, what, warnMsg = '';
+    var itemsText = cartItems.map(function(m){ return esc(m.name) + '×' + cart.items[m.id]; }).join('、');
+    if (mode === 'entry' || mode === 'first'){
+      var needChoice = mode === 'first' && !cartCups && !cart.none;
+      canSave = peopleN > 0 && cartCups <= peopleN && !needChoice;
+      if (cartCups > peopleN && peopleN > 0) warnMsg = '1杯目は人数分までです。おかわりは、上の「1杯目」のチェックを外して記録してください。';
+      else if (cartCups > 0 && !peopleN) warnMsg = '先に上の人数を押してください';
+      else if (peopleN && needChoice) warnMsg = 'ドリンクを選ぶか、「ドリンクを頼まない」を押してください';
+      what = peopleN || cartItems.length || cart.none
+        ? '<div class="what">' + (peopleN ? peopleN + '人 ・ ' : '') + (itemsText || 'ドリンクなし') + '</div>' +
+          (mode === 'entry' && feeLines.length ? '<div class="what dim">' + feeLines.map(function(x){ return esc(x.name) + ' ' + x.n + '人×' + yen(x.price); }).join(' ／ ') + '</div>' : '') +
+          (surLines.length ? '<div class="what dim">追加料金 ' + surLines.map(function(x){ return esc(x.name) + ' ' + x.n + '杯×' + yen(x.unit); }).join(' ／ ') + '</div>' : '') +
+          (peopleN && cartCups > 0 && cartCups < peopleN && !warnMsg ? '<div class="what dim">ドリンクはあと' + (peopleN - cartCups) + '杯(選ばない人はそのままでOK)</div>' : '') +
+          (peopleN && !cartCups && mode === 'entry' && !cart.none ? '<div class="what dim">ドリンクはあと' + peopleN + '杯(選ばない人はそのままでOK)</div>' : '')
+        : '<div class="what dim">人数とドリンクを押してください</div>';
+    } else if (mode === 'extra'){
+      canSave = cartItems.length > 0;
+      what = cartItems.length ? '<div class="what">' + itemsText + '</div>' : '<div class="what dim">ドリンクの「＋」を押してください</div>';
+    } else {
+      canSave = cartItems.length > 0 && peopleN > 0;
+      if (cartItems.length){
+        what = '<div class="what">' + (peopleN ? peopleN + '人 ・ ' : '') + itemsText + '</div>';
+        if (!peopleN) warnMsg = '先に上の人数を押してください';
+      } else if (peopleN){
+        what = '<div class="what">' + peopleN + '人 ・ ドリンクの「＋」を押して選びます</div>';
+      } else {
+        what = '<div class="what dim">人数とドリンクを押してください</div>';
+      }
+    }
+    if (warnMsg) what += '<div class="what warn">' + warnMsg + '</div>';
+    var noneRow = capped
+      ? '<div class="none-row"><button class="none-btn" data-act="cart-none" aria-pressed="' + (cart.none ? 'true' : 'false') + '">' + (cart.none ? '✓ ' : '') + 'ドリンクを頼まない</button>' +
+        '<span class="soft">全員がドリンクを頼まないときに押します(一部の人だけのときは、頼む人の分だけ選べばOKです)</span></div>'
+      : '';
+    var capLabel = mode === 'entry' ? '1杯目(参加費)' : (mode === 'first' ? '1杯目(ドリンク代)' : (mode === 'extra' ? '2杯目以降(ドリンク代)' : '今回のグループ'));
+    var showPay = mode === 'entry' ? peopleN > 0 : cartItems.length > 0;
+    var payCap = mode === 'entry' ? (surLines.length ? 'お会計(参加費+追加料金)' : 'お会計(人数×参加費)') : 'お会計(ドリンク代)';
+    var bar = '<div class="cart-bar"><div class="cart-sum"><div class="cap">' + capLabel + (cartItems.length ? '(' + cartCups + '杯)' : '') + '</div>' + what + '</div>' +
+      (showPay ? '<span class="cart-sum"><span class="cap">' + payCap + '</span><span class="pay">' + yen(pay) + '</span></span>' : '') +
+      '<div class="cart-btns"><button class="btn btn-quiet btn-lg" data-act="cart-clear"' + ((cartItems.length || peopleN || cart.none) ? '' : ' disabled') + '>やり直す</button>' +
+      '<button class="btn btn-primary btn-lg" data-act="rec-save"' + (canSave ? '' : ' disabled') + '>記録する</button></div></div>';
+
+    var anyRefill = drinks.some(function(m){ return m.priceRefill !== null && m.priceRefill !== undefined; });
+    var modeHTML = (ev.oneDrink || ev.firstPaid)
+      ? '<div class="mode-switch"><label class="first-check"><input type="checkbox" data-first="1"' + (mode !== 'extra' ? ' checked' : '') + '><span><strong>' + (ev.oneDrink ? '1杯目(参加費に含む)' : '1杯目(ドリンクを購入)') + '</strong>' +
+        '<small>' + (mode === 'entry'
+          ? 'チェックあり: お会計は「人数×参加費」になり、ドリンクは1人1杯まで選べます。'
+          : (mode === 'first'
+            ? 'チェックあり: 人数を数えて、ドリンクは1人1杯まで選びます。お会計はドリンク代です。'
+            : 'チェックなし: 2杯目以降(おかわり)です。お会計はドリンク代だけになります。' + (anyRefill ? 'おかわりの価格が決まっているドリンクは、その価格で計算します。' : ''))) + '</small></span></label></div>'
+      : '';
+
+    var extraCups = recsOf(ev.id).reduce(function(a, r){
+      return a + (r.kind === 'extra' ? Object.keys(r.items).reduce(function(s, id){ return s + Math.max(0, Math.floor(num(r.items[id]))); }, 0) : 0);
+    }, 0);
+    var recent = recsOf(ev.id).slice().sort(function(a, b){ return b.t - a.t; }).slice(0, 6);
+    var recentHTML = '<div class="recent"><h3>最近の記録</h3>' + (recent.length ? recent.map(function(r){
+      var w = Object.keys(r.people).filter(function(k){ return r.people[k] > 0; }).map(function(k){ return personLabel(k, r) + '×' + r.people[k]; }).join('、');
+      var items = Object.keys(r.items).filter(function(id){ return r.items[id] > 0; }).map(function(id){
+        var d = drinkById(id);
+        return esc(d ? d.name : (r.names[id] || '削除したドリンク')) + '×' + r.items[id];
+      }).join('、');
+      var tag = r.kind === 'entry' ? '<span class="kind">参加受付</span>' : (r.kind === 'first' ? '<span class="kind">1杯目</span>' : (r.kind === 'extra' ? '<span class="kind">2杯目以降</span>' : ''));
+      var who = r.kind === 'extra' ? '' : ' <span class="who">(' + peopleTotal(r.people) + '人:' + esc(w) + ')</span>';
+      return '<div class="recent-row"><div><span class="t">' + fmtTime(r.t) + '</span>' + tag + (items || 'ドリンクなし') + who + '</div>' +
+        '<div class="row-actions">' + (isConfirm('rec', r.id)
+          ? '<button class="link strong" data-act="rec-delete-yes" data-id="' + esc(r.id) + '">取り消す</button><button class="link" data-act="confirm-no">やめる</button>'
+          : '<button class="link danger" data-act="rec-delete" data-id="' + esc(r.id) + '">取り消し</button>') + '</div></div>';
+    }).join('') : '<div class="empty">まだ記録がありません。</div>') + '</div>';
+
+    return '<div class="panel">' +
+      '<div class="recv-top">' + eventSelect('recv-event', ev.id, 'イベント') +
+        '<div class="counts"><div class="count"><div class="cap">来場</div><div class="big">' + f.visitors + '<small>人</small></div></div>' +
+        '<div class="count"><div class="cap">売れた</div><div class="big">' + f.cups + '<small>杯</small></div></div>' +
+        ((ev.oneDrink || ev.firstPaid) ? '<div class="count"><div class="cap">うち2杯目以降</div><div class="big">' + extraCups + '<small>杯</small></div></div>' : '') + '</div></div>' +
+      modeHTML + feeWarn + alertHTML + attrHTML + '<div class="people-head"><div class="gl">' + (mode === 'extra' ? '' : '<span class="stepn">3</span>') + 'ドリンクを選ぶ' + (capped ? '<span class="soft">' + (peopleN ? '(人数分の' + peopleN + '杯まで・あと' + Math.max(0, peopleN - cupsNow) + '杯)' : '(先に②で人数を押してください)') + '</span>' : '') + '</div></div>' + cards + noneRow + bar + recentHTML + '</div>';
+  }
+
+    /* --- 経費 --- */
+  function bearerSelect(cur, attrs, ev){
+    var pn = partnerName(ev);
+    return '<select class="tsel" ' + attrs + '><option value="own"' + (cur === 'partner' ? '' : ' selected') + '>自分たち</option><option value="partner"' + (cur === 'partner' ? ' selected' : '') + '>' + esc(pn) + '</option></select>';
+  }
+  function sourceNames(){
+    var seen = {}, out = [];
+    state.events.forEach(function(e){ e.expenses.forEach(function(x){ if (x.source && !seen[x.source]){ seen[x.source] = true; out.push(x.source); } }); });
+    return out;
+  }
+  function srcList(){ return '<datalist id="src-list">' + sourceNames().map(function(s){ return '<option value="' + esc(s) + '"></option>'; }).join('') + '</datalist>'; }
+  function expensesHTML(){
+    var ev = pickEvent('expenseEventId');
+    if (!ev) return '<div class="panel"><h2>経費</h2><div class="empty">先に「イベント」タブでイベントを追加してください。</div></div>';
+    var used = ev.expenses.reduce(function(a, e){ return a + (e.bearer === 'partner' ? 0 : expUsed(e)); }, 0);
+    var paid = ev.expenses.reduce(function(a, e){ return a + (e.kind === 'carry' || e.bearer === 'partner' ? 0 : Math.max(0, num(e.amount))); }, 0);
+    var partnerUsed = ev.expenses.reduce(function(a, e){ return a + (e.bearer === 'partner' ? expUsed(e) : 0); }, 0);
+    var carryOut = ev.expenses.reduce(function(a, e){ return a + expCarry(e); }, 0);
+
+    var pool = expensePool(ev);
+    var poolHTML = pool.length
+      ? '<div class="carry-hint stack"><div>前回までのイベントから持ち越した備品があります。今回使うものは「使う」を押してください。</div>' +
+        pool.map(function(p){
+          return '<div class="pool-row"><span>' + esc(p.label) + '<span class="soft">' + esc(p.eventName) + 'から ' + yen(p.value) + '</span></span>' +
+            '<button class="btn btn-quiet" data-act="exp-use" data-id="' + esc(p.id) + '">使う</button></div>';
+        }).join('') + '</div>'
+      : '';
+
+    var list = ev.expenses.length
+      ? '<div class="table-wrap"><table><thead><tr><th>品目</th><th>区分</th><th>負担者</th><th>支払い元</th><th class="num">金額</th><th class="num">次回に持ち越す金額</th><th class="num">今回の費用</th><th></th></tr></thead><tbody>' +
+        ev.expenses.map(function(e){
+          return '<tr><td>' + esc(e.label) + '</td><td>' + (e.kind === 'carry' ? '前回の残り' : '今回買った') + '</td>' +
+            '<td>' + bearerSelect(e.bearer, 'data-expb="bearer" data-id="' + esc(e.id) + '" aria-label="' + esc(e.label) + 'の負担者"', ev) + '</td>' +
+            '<td><input class="tin wide" type="text" list="src-list" aria-label="' + esc(e.label) + 'の支払い元" data-expb="source" data-id="' + esc(e.id) + '" value="' + esc(e.source) + '" placeholder="例:共有の財布"></td>' +
+            '<td class="num"><input class="tin" type="number" min="0" step="1" inputmode="numeric" aria-label="' + esc(e.label) + 'の金額" data-exp="amount" data-id="' + esc(e.id) + '" value="' + num(e.amount) + '"></td>' +
+            '<td class="num"><input class="tin" type="number" min="0" step="1" inputmode="numeric" aria-label="' + esc(e.label) + 'の次回に持ち越す金額" data-exp="carry" data-id="' + esc(e.id) + '" value="' + (num(e.carryOut) || '') + '" placeholder="0"></td>' +
+            '<td class="num" id="expc-' + esc(e.id) + '">' + yen(expUsed(e)) + '</td>' +
+            '<td><div class="row-actions">' +
+            (isConfirm('exp', e.id) ? confirmCell('exp', e.id) : '<button class="link danger" data-act="exp-delete" data-id="' + esc(e.id) + '">削除</button>') +
+            '</div></td></tr>';
+        }).join('') + '</tbody></table></div>'
+      : '<div class="empty">このイベントの経費はまだありません。</div>';
+
+    return '<div class="panel"><h2>経費</h2>' +
+      '<p class="note">氷・紙コップ・什器のレンタル代など、ドリンクの原価以外の費用を入れます。使い切らずに次回へ回す備品は、その分の金額を「次回に持ち越す金額」に入れます。今回の費用は、金額から持ち越す金額を引いた額です。前回の残りを使うときは、下の「使う」から追加します。「負担する人」は、その費用を自分たちの利益から引くか(自分たち)、相手が持つか(相手)を選びます。相手の負担にすると、自分たちの利益には入りません。「支払い元」は、どの財布やだれが立て替えたかのメモで、レポートに集計されます。</p>' +
+      eventSelect('expense-event', ev.id) + poolHTML +
+      '<div class="fields">' +
+        '<div class="field"><label for="exp-label">品目</label><input type="text" id="exp-label" data-enter="exp-add" placeholder="例:氷、紙コップ"></div>' +
+        '<div class="field"><label for="exp-amount">金額(払った額)</label><input type="number" id="exp-amount" min="0" step="1" inputmode="numeric" data-enter="exp-add" placeholder="例:3000"></div>' +
+        '<div class="field"><label for="exp-carry">次回に持ち越す金額</label><input type="number" id="exp-carry" min="0" step="1" inputmode="numeric" data-enter="exp-add" placeholder="なければ空欄"></div>' +
+        '<div class="field"><label for="exp-bearer">負担する人</label>' + bearerSelect('own', 'id="exp-bearer"', ev) + '</div>' +
+        '<div class="field"><label for="exp-source">支払い元(どの財布から払ったか)</label><input type="text" id="exp-source" list="src-list" data-enter="exp-add" placeholder="例:共有の財布、立て替え"></div>' +
+        '<button class="btn btn-primary" data-act="exp-add">追加する</button></div>' + srcList() + formErr('expense') +
+      '<div class="divider"></div>' + list +
+      '<div class="foot-sum">' +
+        '<div class="sum"><div class="cap">今回の費用(自分たちの負担)</div><div class="amt" id="exp-used">' + yen(used) + '</div></div>' +
+        '<div class="sum"><div class="cap">今回払った金額</div><div class="amt" id="exp-paid">' + yen(paid) + '</div></div>' +
+        '<div class="sum"><div class="cap">次回に持ち越す金額</div><div class="amt" id="exp-carry-sum">' + yen(carryOut) + '</div></div>' +
+        (partnerUsed > 0 ? '<div class="sum"><div class="cap">' + esc(partnerName(ev)) + 'の負担分</div><div class="amt" id="exp-partner">' + yen(partnerUsed) + '</div></div>' : '') +
+      '</div></div>';
+  }
+
+    /* --- レポート --- */
+  function ownLabel(target){
+    var names = [];
+    target.forEach(function(e){ if (e.ownName && names.indexOf(e.ownName) === -1) names.push(e.ownName); });
+    return names.length === 1 ? names[0] : '自分たち';
+  }
+  function partnerLabel(target){
+    var names = [];
+    target.forEach(function(e){ if (e.partner && names.indexOf(e.partner) === -1) names.push(e.partner); });
+    return names.length === 1 ? names[0] : (names.length > 1 ? '相手(' + names.join('・') + ')' : '相手');
+  }
+  function reportHTML(){
+    var events = sortedEvents();
+    if (!events.length) return '<div class="panel"><h2>レポート</h2><div class="empty">まだイベントがありません。</div></div>';
+    var scope = state.reportScope;
+    if (scope !== 'all' && !eventById(scope)) scope = state.reportScope = 'all';
+    var target = scope === 'all' ? events : [eventById(scope)];
+    var f = totalFinance(target);
+    var rank = ranking(target);
+    var missing = drinksMissingCost(target);
+    var title = scope === 'all' ? '全イベントの合計' : target[0].name;
+
+    var select = '<div class="field select-wrap"><label for="report-scope">集計する範囲</label><select id="report-scope" data-sel="report-scope">' +
+      '<option value="all"' + (scope === 'all' ? ' selected' : '') + '>全イベントの合計</option>' +
+      events.map(function(e){ return '<option value="' + esc(e.id) + '"' + (e.id === scope ? ' selected' : '') + '>' + esc(e.name) + '(' + fmtDate(e.date) + ')</option>'; }).join('') +
+      '</select></div>';
+    var warn = missing.length
+      ? '<p class="banner">原価や仕入れの値段が未入力のものがあります(' + esc(missing.join('、')) + ')。原価0円として計算しているため、利益は実際より多く表示されています。「メニュー」タブで原価を、材料を使うものは「仕入れ品」タブで値段を入れてください。</p>' : '';
+    var hasOne = target.some(function(e){ return e.oneDrink; }) || f.entry > 0;
+    var hasSplit = f.partnerRev > 0 || f.partnerExp > 0 || target.some(function(e){ return !!e.partner; });
+    var pn = partnerLabel(target), on = ownLabel(target);
+    var sums = '<h3>' + esc(title) + '</h3><div class="sums">' +
+      '<div class="sum"><div class="cap">来場者</div><div class="amt">' + f.visitors + '人</div></div>' +
+      '<div class="sum"><div class="cap">売れた杯数</div><div class="amt">' + f.cups + '杯</div></div>' +
+      (hasOne ? '<div class="sum"><div class="cap">参加費収入</div><div class="amt">' + yen(f.entry) + '</div></div>' +
+        '<div class="sum"><div class="cap">ドリンク売上' + (hasOne ? '(参加費に含まない分)' : '') + '</div><div class="amt">' + yen(f.drinkRev) + '</div></div>' : '') +
+      (f.surcharge > 0 ? '<div class="sum"><div class="cap">追加料金(ワインなど)</div><div class="amt">' + yen(f.surcharge) + '</div></div>' : '') +
+      '<div class="sum"><div class="cap">' + (hasSplit ? '受付で預かった金額' : (hasOne ? '売上合計' : '売上')) + '</div><div class="amt">' + yen(f.revenue) + '</div></div>' +
+      (hasSplit ? '<div class="sum"><div class="cap">' + esc(pn) + 'に渡す分</div><div class="amt">' + yen(f.partnerRev) + '</div></div>' +
+        '<div class="sum"><div class="cap">' + esc(on) + 'の売上</div><div class="amt">' + yen(f.ownRev) + '</div></div>' : '') +
+      '<div class="sum"><div class="cap">ドリンク原価</div><div class="amt">' + yen(f.cost) + '</div></div>' +
+      '<div class="sum"><div class="cap">経費(今回使った分)</div><div class="amt">' + yen(f.expense) + '</div></div>' +
+      '<div class="sum"><div class="cap">利益</div><div class="amt ' + (f.profit >= 0 ? 'pos' : 'neg') + '">' + yen(f.profit) + '</div></div></div>' +
+      (f.visitors ? '<p class="note" style="margin:14px 0 0">1人あたり ' + (f.cups / f.visitors).toFixed(1) + '杯 ・ ' + yen(f.revenue / f.visitors) +
+        (hasOne ? '(ワンドリンク分 ' + f.freeCups + '杯 ・ 2杯目以降 ' + (f.cups - f.freeCups) + '杯 ・ 1人あたり追加 ' + ((f.cups - f.freeCups) / f.visitors).toFixed(1) + '杯)' : '') + '</p>' : '');
+
+    var leftoverVal = scope === 'all' ? eventFinance(events[0]).leftover : f.leftover;
+    var carryOutVal = scope === 'all' ? expensePool(null).reduce(function(a, x){ return a + x.value; }, 0) : f.carryOut;
+    var cashHTML = '<div class="sums">' +
+      '<div class="sum"><div class="cap">' + (hasSplit ? esc(on) + 'の売上' : '売上') + '</div><div class="amt">' + yen(f.ownRev) + '</div></div>' +
+      '<div class="sum"><div class="cap">ドリンク仕入れ代(今回買った分)</div><div class="amt">' + yen(f.purchase) + '</div></div>' +
+      '<div class="sum"><div class="cap">備品などの支払い</div><div class="amt">' + yen(f.paid) + '</div></div>' +
+      '<div class="sum"><div class="cap">現金の収支</div><div class="amt ' + (f.cash >= 0 ? 'pos' : 'neg') + '">' + yen(f.cash) + '</div></div>' +
+      '<div class="sum"><div class="cap">次回に持ち越すドリンク(原価)</div><div class="amt">' + yen(leftoverVal) + '</div></div>' +
+      '<div class="sum"><div class="cap">次回に持ち越す備品</div><div class="amt">' + yen(carryOutVal) + '</div></div></div>' +
+      '<p class="note" style="margin:14px 0 0">「利益」は、実際に使った分だけで計算します(売上−売れたドリンクの原価−今回使った経費)。「現金の収支」は、実際に買った分・払った分で計算するため、残りを次回に回すと利益より低く出ます。' + (hasSplit ? '相手に渡す分は、売上にも利益にも入っていません。ドリンクの仕入れ代は、支払い元を分けて記録していません。' : '') + (scope === 'all' ? '持ち越すドリンクは、直近のイベントの残りです。' : '') + '</p>';
+    var perEvent = '';
+    if (scope === 'all' && events.length > 1){
+      perEvent = '<div class="divider"></div><h3>イベント別</h3><div class="table-wrap"><table><thead><tr><th>イベント名</th><th>開催日</th><th class="num">来場</th><th class="num">杯数</th><th class="num">' + (hasSplit ? '預かった金額' : '売上') + '</th>' + (hasSplit ? '<th class="num">相手に渡す分</th>' : '') + '<th class="num">利益</th></tr></thead><tbody>' +
+        events.map(function(e){
+          var x = eventFinance(e);
+          return '<tr><td>' + esc(e.name) + '</td><td>' + fmtDate(e.date) + '</td><td class="num">' + x.visitors + '人</td><td class="num">' + x.cups + '杯</td><td class="num">' + yen(x.revenue) + '</td>' + (hasSplit ? '<td class="num">' + yen(x.partnerRev) + '</td>' : '') + '<td class="num">' + yen(x.profit) + '</td></tr>';
+        }).join('') + '</tbody></table></div>';
+    }
+
+    var cross = crossCounts(target);
+    var crossHTML;
+    if (!f.visitors){
+      crossHTML = '<div class="empty">この範囲には、まだ受付の記録がありません。</div>';
+    } else {
+      crossHTML = '<div class="table-wrap"><table><thead><tr><th>' + esc(ATTRS[0].label) + ' \\ ' + esc(ATTRS[1].label) + '</th>' +
+        cross.cols.map(function(c){ return '<th class="num">' + c[1] + '</th>'; }).join('') + '<th class="num">合計</th></tr></thead><tbody>' +
+        cross.rows.map(function(r){
+          var sum = 0;
+          var tds = cross.cols.map(function(c){ var v = cross.c[r[0]][c[0]]; sum += v; return '<td class="num">' + v + '</td>'; }).join('');
+          return '<tr><td>' + r[1] + '</td>' + tds + '<td class="num"><strong>' + sum + '</strong></td></tr>';
+        }).join('') +
+        '<tr><td><strong>合計</strong></td>' + cross.cols.map(function(c){
+          var s = 0; cross.rows.forEach(function(r){ s += cross.c[r[0]][c[0]]; });
+          return '<td class="num"><strong>' + s + '</strong></td>';
+        }).join('') + '<td class="num"><strong>' + f.visitors + '</strong></td></tr></tbody></table></div>';
+    }
+
+    var rankHTML = rank.length
+      ? '<div class="table-wrap"><table><thead><tr><th>順位</th><th>ドリンク名</th><th class="num">販売数</th>' + (hasOne ? '<th class="num">うちワンドリンク</th>' : '') + '<th class="num">ドリンク売上</th></tr></thead><tbody>' +
+        rank.map(function(r, i){ return '<tr><td>' + (i + 1) + '</td><td>' + esc(r.name) + '</td><td class="num">' + r.qty.toLocaleString('ja-JP') + '杯</td>' + (hasOne ? '<td class="num">' + r.free + '杯</td>' : '') + '<td class="num">' + yen(r.revenue) + '</td></tr>'; }).join('') +
+        '</tbody></table></div>'
+      : '<div class="empty">この範囲には、まだ売上の記録がありません。「受付」で記録すると表示されます。</div>';
+
+    var feeMap = {}, feeOrder = [];
+    target.forEach(function(e){
+      recsOf(e.id).forEach(function(r){
+        if (r.kind !== 'entry') return;
+        Object.keys(r.people).forEach(function(k){
+          var n = Math.max(0, Math.floor(num(r.people[k]))); if (!n) return;
+          var fid = k.split('|')[2] || '';
+          var nm = (fid && r.feeNames[fid]) || (fid ? '' : '') || '参加費(旧形式)';
+          var pr = (fid && r.feePrices[fid] !== undefined) ? num(r.feePrices[fid]) : (Object.keys(r.feePrices).length ? 0 : num(r.fee));
+          var key = nm + '|' + pr;
+          if (!feeMap[key]){ feeMap[key] = {name: nm, price: pr, n: 0}; feeOrder.push(key); }
+          feeMap[key].n += n;
+        });
+      });
+    });
+    var feeHTML = feeOrder.length
+      ? '<div class="panel"><h2>参加費の内訳</h2><div class="table-wrap"><table><thead><tr><th>種類</th><th class="num">1人あたり</th><th class="num">人数</th><th class="num">参加費収入</th></tr></thead><tbody>' +
+        feeOrder.map(function(k){ var x = feeMap[k]; return '<tr><td>' + esc(x.name) + '</td><td class="num">' + yen(x.price) + '</td><td class="num">' + x.n + '人</td><td class="num">' + yen(x.price * x.n) + '</td></tr>'; }).join('') +
+        '<tr><td><strong>合計</strong></td><td></td><td class="num"><strong>' + feeOrder.reduce(function(a, k){ return a + feeMap[k].n; }, 0) + '人</strong></td><td class="num"><strong>' + yen(f.entry) + '</strong></td></tr></tbody></table></div></div>'
+      : '';
+    var splitHTML = '';
+    if (hasSplit){
+      var trow = function(label, v, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + label + '</td><td class="num">' + yen(v) + '</td></tr>'; };
+      splitHTML = '<div class="panel"><h2>お金の分け方(' + esc(pn) + 'と' + esc(on) + ')</h2><div class="table-wrap"><table class="split-table"><tbody>' +
+        trow('受付で預かった金額', f.revenue, 'strong') +
+        trow(esc(on) + 'の取り分', f.ownRev) +
+        trow(esc(pn) + 'に渡す金額', f.partnerRev, 'strong') +
+        (f.entryP > 0 ? trow('<span class="indent">参加費・チケット代のうち' + esc(pn) + 'の分</span>', f.entryP) : '') +
+        (f.drinkP > 0 ? trow('<span class="indent">' + esc(pn) + 'のドリンク(ワインなど)の売上</span>', f.drinkP) : '') +
+        (f.surP > 0 ? trow('<span class="indent">追加料金(ワインなど)のうち' + esc(pn) + 'の分</span>', f.surP) : '') +
+        (f.partnerExp > 0 ? trow(esc(pn) + 'が負担した備品(参考。渡す金額には入れていません)', f.partnerExp) : '') +
+        '</tbody></table></div><p class="note" style="margin:14px 0 0">受付で記録した時点の設定で計算しています。「渡す金額」は、受付で預かったお金のうち、相手のものとして分けた金額です。</p></div>';
+    }
+    var srcs = sourceTotals(target), srcHTML = '';
+    if (srcs.some(function(s){ return s.name !== '(支払い元なし)'; })){
+      srcHTML = '<div class="panel"><h2>備品などの支払い元別</h2><div class="table-wrap"><table><thead><tr><th>支払い元</th><th class="num">' + esc(on) + 'の負担</th><th class="num">' + esc(pn) + 'の負担</th><th class="num">合計</th></tr></thead><tbody>' +
+        srcs.map(function(s){ return '<tr><td>' + esc(s.name) + '</td><td class="num">' + yen(s.own) + '</td><td class="num">' + yen(s.partner) + '</td><td class="num">' + yen(s.own + s.partner) + '</td></tr>'; }).join('') +
+        '</tbody></table></div><p class="note" style="margin:14px 0 0">今回買った備品の支払い額です(前回の残りを使った分は入っていません)。</p></div>';
+    }
+    var finalHTML = '';
+    if (hasSplit){
+      var frow = function(label, v, cls){ return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + label + '</td><td class="num">' + (v < 0 ? '−' + yen(-v) : yen(v)) + '</td></tr>'; };
+      finalHTML = '<h3>最終的な収益(' + esc(title) + ')</h3><div class="final-grid">' +
+        '<div class="final-card"><h3>' + esc(on) + '</h3><div class="final-amt ' + (f.profit >= 0 ? 'pos' : 'neg') + '" id="final-own">' + yen(f.profit) + '</div>' +
+          '<table class="split-table"><tbody>' +
+          frow('取り分(ドリンク売上・チケット代の自分たちの分)', f.ownRev) +
+          frow('売れたドリンクの原価', -f.cost) +
+          frow('経費(' + esc(on) + 'の負担)', -f.expense) +
+          '</tbody></table></div>' +
+        '<div class="final-card"><h3>' + esc(pn) + '</h3><div class="final-amt ' + (f.partnerProfit >= 0 ? 'pos' : 'neg') + '" id="final-partner">' + yen(f.partnerProfit) + '</div>' +
+          '<table class="split-table"><tbody>' +
+          frow('取り分(チケット代・ワイン・追加料金)', f.partnerRev) +
+          frow('負担した備品', -f.partnerExp) +
+          '</tbody></table></div></div>' +
+        '<p class="note" style="margin:14px 0 0">' + esc(on) + 'の収益は、上の「利益」と同じ金額です。' + esc(pn) + 'の収益は、受け取る金額から、' + esc(pn) + 'が負担した備品を引いた金額です。' + esc(pn) + 'が用意したワインなどの仕入れ代は、記録していないため入っていません。</p><div class="divider"></div>';
+    }
+    return '<div class="panel"><h2>レポート</h2>' + select + warn + finalHTML + sums + perEvent + '</div>' + splitHTML +
+      '<div class="panel"><h2>お金の動きと持ち越し</h2>' + cashHTML + '</div>' + srcHTML + feeHTML +
+      '<div class="panel"><h2>来場者の内訳(人数)</h2>' + crossHTML + '</div>' +
+      '<div class="panel"><h2>売れ筋ランキング</h2>' + rankHTML + '</div>';
+  }
+
+  /* ---------- 操作 ---------- */
+  function val(id){ var el = $('#' + id); return el ? el.value : ''; }
+  function fail(scope, msg){ state.formError = {scope: scope, msg: msg}; render(); }
+  function clearMsgs(){ state.formError = null; state.confirm = null; }
+  function resetCart(){ state.cart = {people: {}, items: {}, none: false}; }
+
+  async function deleteRecordsSeq(ids){
+    if (!db) return;
+    ids.forEach(function(id){ pending.add('records/' + id); });
+    setSave('saving');
+    try{
+      for (var i = 0; i < ids.length; i++){
+        await db.doc('records/' + ids[i]).delete();
+        pending.delete('records/' + ids[i]);
+      }
+      setSave('saved');
+    }catch(e){
+      ids.forEach(function(id){ pending.delete('records/' + id); });
+      setSave('error');
+    }
+  }
+
+  var actions = {
+    'group': function(el){
+      var g = GROUPS.filter(function(x){ return x.id === el.dataset.v; })[0];
+      if (!g) return;
+      state.tab = lastTab[g.id] || g.tabs[0][0]; clearMsgs();
+      if (state.tab !== 'events') state.editingEventId = null;
+      render();
+    },
+    'tab': function(el){
+      state.tab = el.dataset.v; clearMsgs();
+      if (state.tab !== 'events') state.editingEventId = null;
+      render();
+    },
+    'confirm-no': function(){ state.confirm = null; render(); },
+
+    'ev-save': function(){
+      var name = val('ev-name').trim();
+      if (!name) return fail('event', 'イベント名を入力してください。');
+      var date = val('ev-date'), venue = val('ev-venue').trim();
+      var styleEl = $('#ev-style'), style = styleEl ? styleEl.value : 'ticket';
+      var one = style === 'ticket', firstPaid = style === 'first', partner = val('ev-partner').trim(), ownName = val('ev-own').trim();
+      state.formError = null;
+      if (state.editingEventId){
+        var ev = eventById(state.editingEventId);
+        if (ev){ ev.name = name; ev.date = date; ev.venue = venue; ev.oneDrink = one; ev.firstPaid = firstPaid; ev.partner = partner; ev.ownName = ownName; saveEvent(ev.id, 0); }
+        state.editingEventId = null;
+        toast('イベントを更新しました');
+      } else {
+        var id = uid();
+        state.events.push({id: id, name: name, date: date, venue: venue, oneDrink: one, firstPaid: firstPaid, partner: partner, ownName: ownName, feeIds: sortedFees().filter(function(f){ return f.std; }).map(function(f){ return f.id; }),
+          menuIds: sortedMenu().map(function(m){ return m.id; }), stock: {}, alertAt: {}, carryIn: {}, plan: {}, expenses: [], createdAt: Date.now()});
+        state.recvEventId = id; state.stockEventId = id; state.expenseEventId = id;
+        saveEvent(id, 0);
+        toast('イベントを追加しました');
+      }
+      render();
+    },
+    'ev-cancel': function(){ state.editingEventId = null; state.formError = null; render(); },
+    'ev-edit': function(el){ state.editingEventId = el.dataset.id; state.confirm = null; state.formError = null; render(); },
+    'ev-delete': function(el){ state.confirm = {kind: 'ev', id: el.dataset.id}; render(); },
+    'ev-delete-yes': function(el){
+      var id = el.dataset.id;
+      var recIds = recsOf(id).map(function(r){ return r.id; });
+      state.events = state.events.filter(function(e){ return e.id !== id; });
+      state.records = state.records.filter(function(r){ return r.eventId !== id; });
+      recordsChanged();
+      state.confirm = null;
+      saveEvent(id, 0);
+      deleteRecordsSeq(recIds);
+      toast('イベントを削除しました');
+      render();
+    },
+
+    'menu-add': function(){
+      var name = val('mn-name').trim();
+      if (!name) return fail('menu', 'ドリンク名を入力してください。');
+      var priceRaw = val('mn-price');
+      if (priceRaw === '') return fail('menu', '販売価格を入力してください。');
+      var costRaw = val('mn-cost');
+      var order = state.menu.reduce(function(a, m){ return Math.max(a, m.order || 0); }, 0) + 1;
+      var id = uid();
+      state.menu.push({id: id, name: name, price: Math.max(0, num(priceRaw)), cost: costRaw === '' ? null : Math.max(0, num(costRaw)), recipe: [], priceRefill: null, payee: 'own', entryExtra: 0, order: order});
+      state.formError = null;
+      saveMenu(id);
+      toast('ドリンクを追加しました');
+      render();
+    },
+    'menu-delete': function(el){ state.confirm = {kind: 'menu', id: el.dataset.id}; render(); },
+    'menu-delete-yes': function(el){
+      var id = el.dataset.id;
+      state.menu = state.menu.filter(function(m){ return m.id !== id; });
+      state.confirm = null;
+      saveMenu(id);
+      toast('ドリンクを削除しました');
+      render();
+    },
+
+    'stock-add': function(el){
+      var ev = eventById(state.stockEventId);
+      if (!ev) return;
+      var id = el.dataset.id;
+      var n = Math.floor(num(val('add-' + id)));
+      if (n <= 0){ toast('追加する数を入力してください'); return; }
+      ev.stock[id] = Math.max(0, Math.floor(num(ev.stock[id]))) + n;
+      saveEvent(ev.id, 0);
+      var inf = keyInfo(id);
+      toast((inf ? inf.name : '') + 'を' + n + (inf ? inf.unit : '本') + '追加しました(仕入れ合計 ' + ev.stock[id] + (inf ? inf.unit : '本') + ')');
+      render();
+    },
+
+    'export-json': function(){ download('ドリンク収支帳_全データ_' + todayStr() + '.json', JSON.stringify(backupObject(), null, 1), 'application/json'); toast('全データを書き出しました'); },
+    'export-records': function(){ download('ドリンク収支帳_記録一覧_' + todayStr() + '.csv', recordsCsv(), 'text/csv;charset=utf-8'); toast('記録の一覧を書き出しました'); },
+    'export-events': function(){ download('ドリンク収支帳_イベント別_' + todayStr() + '.csv', eventsCsv(), 'text/csv;charset=utf-8'); toast('イベント別の集計を書き出しました'); },
+    'imp-cancel': function(){ state.importData = null; state.importMsg = ''; render(); },
+    'imp-go': function(){
+      var d = state.importData;
+      if (!d) return;
+      d.menu.forEach(function(x){ upsert(state.menu, normMenu(x.id, x.data)); saveMenu(x.id); });
+      d.items.forEach(function(x){ upsert(state.items, normItem(x.id, x.data)); saveItem(x.id); });
+      d.fees.forEach(function(x){ upsert(state.fees, normFee(x.id, x.data)); saveFee(x.id, 0); });
+      d.events.forEach(function(x){ upsert(state.events, normEvent(x.id, x.data)); saveEvent(x.id, 0); });
+      d.records.forEach(function(x){ upsert(state.records, normRecord(x.id, x.data)); });
+      recordsChanged();
+      d.records.forEach(function(x){ saveRecord(x.id); });
+      state.importData = null; state.importMsg = '';
+      toast('取り込みました');
+      render();
+    },
+    'signout': function(){ if (window.APP_SIGNOUT) window.APP_SIGNOUT(); },
+    'recv-fee': function(el){ state.recvFee = el.dataset.id; render(); },
+    'fee-add': function(){
+      var name = val('fee-name').trim();
+      if (!name) return fail('fee', '参加費の名前を入力してください(例:学生、大人、○○大学生)。');
+      var priceRaw = val('fee-price');
+      if (priceRaw === '') return fail('fee', '金額を入力してください(無料なら0)。');
+      var o = val('fee-o');
+      var order = state.fees.reduce(function(a, f){ return Math.max(a, f.order || 0); }, 0) + 1;
+      var id = uid();
+      state.fees.push({id: id, name: name, price: Math.max(0, num(priceRaw)), o: (o === 's' || o === 'w') ? o : '', std: true, share: Math.min(Math.max(0, num(priceRaw)), Math.max(0, num(val('fee-share')))), order: order});
+      state.formError = null;
+      saveFee(id);
+      toast('参加費を追加しました');
+      render();
+    },
+    'fee-delete': function(el){ state.confirm = {kind: 'fee', id: el.dataset.id}; render(); },
+    'fee-delete-yes': function(el){
+      var id = el.dataset.id;
+      state.fees = state.fees.filter(function(f){ return f.id !== id; });
+      state.confirm = null;
+      saveFee(id);
+      toast('参加費を削除しました');
+      render();
+    },
+    'item-add': function(){
+      var name = val('it-name').trim();
+      if (!name) return fail('item', '品名を入力してください(例:ジンジャエール)。');
+      var size = num(val('it-size'));
+      if (!(size > 0)) return fail('item', '1単位の量を入力してください(例:1500)。');
+      var unit = val('it-unit').trim() || '本', mu = val('it-mu').trim() || 'ml';
+      var priceRaw = val('it-price');
+      var order = state.items.reduce(function(a, i){ return Math.max(a, i.order || 0); }, 0) + 1;
+      var id = uid();
+      state.items.push({id: id, name: name, unit: unit, size: size, mu: mu, price: priceRaw === '' ? null : Math.max(0, num(priceRaw)), order: order});
+      state.formError = null;
+      saveItem(id);
+      toast('仕入れ品を追加しました');
+      render();
+    },
+    'item-delete': function(el){ state.confirm = {kind: 'item', id: el.dataset.id}; render(); },
+    'item-delete-yes': function(el){
+      var id = el.dataset.id;
+      state.items = state.items.filter(function(i){ return i.id !== id; });
+      state.menu.forEach(function(d){
+        var keep = d.recipe.filter(function(x){ return x.itemId !== id; });
+        if (keep.length !== d.recipe.length){ d.recipe = keep; saveMenu(d.id); }
+      });
+      state.confirm = null;
+      saveItem(id);
+      toast('仕入れ品を削除しました');
+      render();
+    },
+    'recipe-edit': function(el){ state.recipeEdit = (state.recipeEdit === el.dataset.id) ? null : el.dataset.id; render(); },
+    'recipe-done': function(){ state.recipeEdit = null; render(); },
+    'recipe-add': function(el){
+      var m = drinkById(el.dataset.id);
+      if (!m) return;
+      var first = sortedItems()[0];
+      m.recipe.push({itemId: first ? first.id : '', amount: 0});
+      saveMenu(m.id);
+      render();
+    },
+    'recipe-del': function(el){
+      var m = drinkById(el.dataset.id);
+      if (!m) return;
+      m.recipe.splice(Number(el.dataset.i), 1);
+      saveMenu(m.id);
+      render();
+    },
+    'stock-plan-fill': function(){
+      var ev = eventById(state.stockEventId);
+      if (!ev) return;
+      var n = 0;
+      stockLines(ev).forEach(function(l){
+        if (planNeed(ev, l) > 0){ ev.stock[l.key] = planBuy(ev, l); n++; }
+      });
+      saveEvent(ev.id, 0);
+      toast('仕入れの目安を入れました(' + n + '種類)');
+      render();
+    },
+    'carry-fill': function(){
+      var ev = eventById(state.stockEventId);
+      if (!ev) return;
+      var prev = prevStockEvent(ev);
+      if (!prev) return;
+      var lo = leftoversOf(prev), n = 0;
+      Object.keys(lo).forEach(function(id){
+        if (drinkById(id) && ev.menuIds.indexOf(id) === -1) ev.menuIds.push(id);
+        ev.carryIn[id] = lo[id]; n++;
+      });
+      saveEvent(ev.id, 0);
+      toast('前回の残りを持ち越しに入れました(' + n + '種類)');
+      render();
+    },
+    'person': function(el){
+      var k = el.dataset.k, d = Number(el.dataset.d);
+      var n = Math.max(0, (state.cart.people[k] || 0) + d);
+      if (n === 0) delete state.cart.people[k]; else state.cart.people[k] = n;
+      render();
+    },
+    'cart': function(el){
+      var id = el.dataset.id, d = Number(el.dataset.d);
+      var evc = eventById(state.recvEventId);
+      if (d > 0) state.cart.none = false;
+      if (d > 0 && evc && (evc.oneDrink || evc.firstPaid) && state.firstDrink){
+        var tot = Object.keys(state.cart.items).reduce(function(a, k){ return a + (state.cart.items[k] || 0); }, 0);
+        if (tot >= peopleTotal(state.cart.people)) return;
+      }
+      var n = Math.max(0, (state.cart.items[id] || 0) + d);
+      if (n === 0) delete state.cart.items[id]; else state.cart.items[id] = n;
+      render();
+    },
+    'cart-clear': function(){ resetCart(); render(); },
+    'cart-none': function(){
+      state.cart.none = !state.cart.none;
+      if (state.cart.none) state.cart.items = {};
+      render();
+    },
+    'opt-edit': function(el){ state.optEdit = el.dataset.id; render(); },
+    'opt-done': function(){ state.optEdit = null; render(); },
+    'rec-save': function(){
+      var ev = eventById(state.recvEventId);
+      if (!ev) return;
+      var mode = evMode(ev);
+      var items = {}, prices = {}, names = {}, payees = {}, extras = {}, cups = 0;
+      Object.keys(state.cart.items).forEach(function(id){
+        var d = drinkById(id), n = state.cart.items[id];
+        if (!d || n <= 0) return;
+        items[id] = n; prices[id] = drinkPrice(d, mode); names[id] = d.name; cups += n;
+        if (d.payee === 'partner') payees[id] = 'partner';
+        if (mode === 'entry' && d.entryExtra > 0) extras[id] = d.entryExtra;
+      });
+      var people = {};
+      Object.keys(state.cart.people).forEach(function(k){ if (state.cart.people[k] > 0) people[k] = state.cart.people[k]; });
+      var pn = peopleTotal(people);
+      var kind = '', fee = 0;
+      var feePrices = {}, feeNames = {}, feeShares = {};
+      Object.keys(people).forEach(function(k){
+        var fid = k.split('|')[2], fe = fid ? feeFor(fid) : null;
+        if (fe){
+          feePrices[fid] = fe.price; feeNames[fid] = fe.name;
+          if (mode === 'entry' && fe.share > 0) feeShares[fid] = fe.share;
+        }
+      });
+      if (mode === 'entry'){
+        if (!pn || cups > pn) return;
+        kind = 'entry';
+      } else if (mode === 'first'){
+        if (!pn || cups > pn || (!cups && !state.cart.none)) return;
+        kind = 'first';
+      } else if (mode === 'extra'){
+        if (!cups) return;
+        kind = 'extra'; people = {}; pn = 0; feePrices = {}; feeNames = {};
+      } else if (!cups || !pn) return;
+      var rec = {id: uid(), eventId: ev.id, t: Date.now(), people: people, items: items, prices: prices, names: names, kind: kind, fee: fee, feePrices: feePrices, feeNames: feeNames, payees: payees, extras: extras, feeShares: feeShares};
+      state.records.push(rec);
+      recordsChanged();
+      saveRecord(rec.id);
+      resetCart();
+      toast(kind === 'extra' ? cups + '杯を記録しました(2杯目以降)' : pn + '人・' + cups + '杯を記録しました(来場 ' + eventFinance(ev).visitors + '人)');
+      render();
+    },
+    'rec-delete': function(el){ state.confirm = {kind: 'rec', id: el.dataset.id}; render(); },
+    'rec-delete-yes': function(el){
+      var id = el.dataset.id;
+      state.records = state.records.filter(function(r){ return r.id !== id; });
+      recordsChanged();
+      state.confirm = null;
+      saveRecord(id);
+      toast('記録を取り消しました');
+      render();
+    },
+
+    'exp-add': function(){
+      var ev = eventById(state.expenseEventId);
+      if (!ev) return;
+      var label = val('exp-label').trim(), amountRaw = val('exp-amount');
+      if (!label) return fail('expense', '品目を入力してください。');
+      if (amountRaw === '') return fail('expense', '金額を入力してください。');
+      var amt = Math.max(0, num(amountRaw)), co = Math.min(amt, Math.max(0, num(val('exp-carry'))));
+      var bEl = $('#exp-bearer');
+      ev.expenses.push({id: uid(), label: label, amount: amt, kind: 'new', carryOut: co, from: '', bearer: (bEl && bEl.value === 'partner') ? 'partner' : 'own', source: val('exp-source').trim()});
+      state.formError = null;
+      saveEvent(ev.id, 0);
+      toast('経費を追加しました');
+      render();
+    },
+    'exp-use': function(el){
+      var ev = eventById(state.expenseEventId);
+      if (!ev) return;
+      var p = expensePool(ev).filter(function(x){ return x.id === el.dataset.id; })[0];
+      if (!p) return;
+      ev.expenses.push({id: uid(), label: p.label, amount: p.value, kind: 'carry', carryOut: 0, from: p.id, bearer: p.bearer, source: p.source});
+      saveEvent(ev.id, 0);
+      toast(p.label + 'を今回使う分として追加しました');
+      render();
+    },
+    'exp-delete': function(el){ state.confirm = {kind: 'exp', id: el.dataset.id}; render(); },
+    'exp-delete-yes': function(el){
+      var ev = eventById(state.expenseEventId);
+      if (!ev) return;
+      ev.expenses = ev.expenses.filter(function(e){ return e.id !== el.dataset.id; });
+      state.confirm = null;
+      saveEvent(ev.id, 0);
+      render();
+    }
+  };
+
+  document.addEventListener('click', function(e){
+    var el = e.target.closest ? e.target.closest('[data-act]') : null;
+    if (!el || !$('#app').contains(el) || el.disabled) return;
+    var fn = actions[el.dataset.act];
+    if (fn) fn(el);
+  });
+
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Enter' || e.isComposing) return;
+    var t = e.target;
+    if (t && t.dataset && t.dataset.enter){
+      e.preventDefault();
+      var fn = actions[t.dataset.enter];
+      if (fn) fn(t);
+    }
+  });
+
+  document.addEventListener('input', function(e){
+    var t = e.target;
+    if (!t || !t.dataset) return;
+    if (t.dataset.expb === 'source'){
+      var se = eventById(state.expenseEventId);
+      var sr = se ? se.expenses.filter(function(x){ return x.id === t.dataset.id; })[0] : null;
+      if (!sr) return;
+      sr.source = t.value;
+      saveEvent(se.id, 600);
+      return;
+    }
+    if (t.dataset.ff === 'name' || t.dataset.ff === 'price' || t.dataset.ff === 'share'){
+      var fe = feeById(t.dataset.id);
+      if (!fe) return;
+      if (t.dataset.ff === 'name') fe.name = t.value; else if (t.dataset.ff === 'share') fe.share = Math.max(0, num(t.value)); else fe.price = Math.max(0, num(t.value));
+      saveFee(fe.id, 600);
+      return;
+    }
+    if (t.dataset.mf){
+      var m = drinkById(t.dataset.id);
+      if (!m) return;
+      var f = t.dataset.mf;
+      if (f === 'name') m.name = t.value;
+      else if (f === 'price') m.price = Math.max(0, num(t.value));
+      else if (f === 'cost') m.cost = t.value === '' ? null : Math.max(0, num(t.value));
+      else if (f === 'priceRefill') m.priceRefill = t.value === '' ? null : Math.max(0, num(t.value));
+      else if (f === 'entryExtra') m.entryExtra = Math.max(0, num(t.value));
+      var g = $('#gross-' + m.id);
+      if (g) g.textContent = grossText(m);
+      updateHeader();
+      saveMenu(m.id);
+    } else if (t.dataset.exp){
+      var xe = eventById(state.expenseEventId);
+      if (!xe) return;
+      var row = xe.expenses.filter(function(x){ return x.id === t.dataset.id; })[0];
+      if (!row) return;
+      if (t.dataset.exp === 'amount') row.amount = Math.max(0, num(t.value));
+      else row.carryOut = Math.max(0, num(t.value));
+      var cell = $('#expc-' + row.id);
+      if (cell) cell.textContent = yen(expUsed(row));
+      var u = 0, pd = 0, co2 = 0, pu = 0;
+      xe.expenses.forEach(function(x){ if (x.bearer === 'partner') pu += expUsed(x); else { u += expUsed(x); if (x.kind !== 'carry') pd += Math.max(0, num(x.amount)); } co2 += expCarry(x); });
+      var ep = $('#exp-partner'); if (ep) ep.textContent = yen(pu);
+      var e1 = $('#exp-used'), e2 = $('#exp-paid'), e3 = $('#exp-carry-sum');
+      if (e1) e1.textContent = yen(u);
+      if (e2) e2.textContent = yen(pd);
+      if (e3) e3.textContent = yen(co2);
+      saveEvent(xe.id, 600);
+    } else if (t.dataset.if){
+      var it = itemById(t.dataset.id);
+      if (!it) return;
+      var f2 = t.dataset.if;
+      if (f2 === 'name') it.name = t.value;
+      else if (f2 === 'unit') it.unit = t.value || '本';
+      else if (f2 === 'mu') it.mu = t.value || 'ml';
+      else if (f2 === 'size'){ if (num(t.value) > 0) it.size = num(t.value); }
+      else if (f2 === 'price') it.price = t.value === '' ? null : Math.max(0, num(t.value));
+      updateHeader();
+      saveItem(it.id);
+    } else if (t.dataset.ramt){
+      var rm = drinkById(t.dataset.ramt);
+      if (!rm) return;
+      var ri = Number(t.dataset.i), rx = rm.recipe[ri];
+      if (!rx) return;
+      rx.amount = Math.max(0, num(t.value));
+      var rc = $('#rcup-' + rm.id + '-' + ri);
+      if (rc) rc.textContent = rcupText(rx);
+      var ci = $('#cost-' + rm.id);
+      if (ci) ci.innerHTML = costInner(rm);
+      var rg = $('#gross-' + rm.id), rcost = drinkCost(rm);
+      if (rg) rg.textContent = rcost === null ? '―' : yen(rm.price - rcost);
+      updateHeader();
+      saveMenu(rm.id);
+    } else if (t.dataset.plan){
+      var pe = eventById(state.stockEventId);
+      if (!pe) return;
+      if (t.value === '') delete pe.plan[t.dataset.plan];
+      else pe.plan[t.dataset.plan] = Math.max(0, Math.floor(num(t.value)));
+      var anyPlan = false;
+      stockLines(pe).forEach(function(l){
+        var n = $('#need-' + l.key); if (n) n.innerHTML = needText(pe, l);
+        if (planNeed(pe, l) > 0) anyPlan = true;
+      });
+      var ph = $('#plan-hint'); if (ph) ph.style.display = anyPlan ? '' : 'none';
+      saveEvent(pe.id, 600);
+    } else if (t.dataset.stock || t.dataset.line || t.dataset.carry){
+      var ev = eventById(state.stockEventId);
+      if (!ev) return;
+      var id = t.dataset.stock || t.dataset.line || t.dataset.carry;
+      var map = t.dataset.stock ? ev.stock : (t.dataset.carry ? ev.carryIn : ev.alertAt);
+      if (t.value === '') delete map[id];
+      else map[id] = t.dataset.stock ? Math.max(0, Math.floor(num(t.value))) : Math.max(0, r3(num(t.value)));
+      var sold2 = soldMap(ev.id);
+      stockLines(ev).forEach(function(l){
+        var rem = lineRem(ev, l, sold2), lv = lineLevel(ev, l, rem);
+        var r = $('#rem-' + l.key), c = $('#remc-' + l.key), w = $('#remw-' + l.key), nd = $('#need-' + l.key);
+        if (r) r.textContent = rem === null ? '―' : fq(rem) + l.unit;
+        if (c) c.innerHTML = lineCupsText(l, rem);
+        if (w) w.className = 'num ' + (lv === 'out' ? 'rem-out' : (lv === 'low' ? 'rem-low' : 'rem-ok'));
+        if (nd) nd.innerHTML = needText(ev, l);
+      });
+      updateHeader();
+      saveEvent(ev.id, 600);
+    }
+  });
+
+  document.addEventListener('change', function(e){
+    var t = e.target;
+    if (!t || !t.dataset) return;
+    if (t.dataset.imp && t.files && t.files[0]){
+      var rd = new FileReader();
+      rd.onload = function(){
+        state.importData = null; state.importMsg = '';
+        try{
+          var o = JSON.parse(String(rd.result));
+          if (!o || o.app !== 'drink-ledger') throw new Error('x');
+          ['menu', 'items', 'fees', 'events', 'records'].forEach(function(k){
+            if (!Array.isArray(o[k])) o[k] = [];
+            o[k] = o[k].filter(function(x){ return x && typeof x.id === 'string' && x.id && x.data && typeof x.data === 'object'; });
+          });
+          state.importData = o;
+        }catch(err){
+          state.importMsg = 'このファイルは取り込めません。「全データを書き出す」で作ったファイルを選んでください。';
+        }
+        render();
+      };
+      rd.readAsText(t.files[0]);
+      return;
+    }
+    if (t.dataset.ff === 'o' || t.dataset.ff === 'std'){
+      var fe2 = feeById(t.dataset.id);
+      if (!fe2) return;
+      if (t.dataset.ff === 'o') fe2.o = (t.value === 's' || t.value === 'w') ? t.value : ''; else fe2.std = !!t.checked;
+      saveFee(fe2.id, 0);
+      return;
+    }
+    if (t.dataset.feechk){
+      var fev = eventById(state.feeEventId);
+      if (!fev) return;
+      var ids = eventFees(fev).map(function(f){ return f.id; });
+      var fi = ids.indexOf(t.dataset.feechk);
+      if (t.checked && fi === -1) ids.push(t.dataset.feechk);
+      if (!t.checked && fi !== -1) ids.splice(fi, 1);
+      fev.feeIds = ids;
+      saveEvent(fev.id, 300);
+      render();
+      return;
+    }
+    if (t.dataset.rsel){
+      var rm2 = drinkById(t.dataset.rsel);
+      if (!rm2) return;
+      var rx2 = rm2.recipe[Number(t.dataset.i)];
+      if (!rx2) return;
+      rx2.itemId = t.value;
+      saveMenu(rm2.id);
+      render();
+      return;
+    }
+    if (t.dataset.mp === 'payee'){
+      var pm = drinkById(t.dataset.id);
+      if (!pm) return;
+      pm.payee = t.value === 'partner' ? 'partner' : 'own';
+      saveMenu(pm.id);
+      render();
+      return;
+    }
+    if (t.dataset.expb === 'bearer'){
+      var be = eventById(state.expenseEventId);
+      var br = be ? be.expenses.filter(function(x){ return x.id === t.dataset.id; })[0] : null;
+      if (!br) return;
+      br.bearer = t.value === 'partner' ? 'partner' : 'own';
+      saveEvent(be.id, 0);
+      render();
+      return;
+    }
+    if (t.dataset.first){
+      state.firstDrink = !!t.checked;
+      resetCart();
+      render();
+      return;
+    }
+    if (t.dataset.chk){
+      var ev = eventById(state.stockEventId);
+      if (!ev) return;
+      var id = t.dataset.chk, i = ev.menuIds.indexOf(id);
+      if (t.checked && i === -1) ev.menuIds.push(id);
+      if (!t.checked && i !== -1) ev.menuIds.splice(i, 1);
+      saveEvent(ev.id, 300);
+      render();
+    } else if (t.dataset.sel){
+      if (t.dataset.sel === 'recv-event'){ state.recvEventId = t.value; state.firstDrink = true; resetCart(); }
+      else if (t.dataset.sel === 'stock-event') state.stockEventId = t.value;
+      else if (t.dataset.sel === 'expense-event') state.expenseEventId = t.value;
+      else if (t.dataset.sel === 'fee-event') state.feeEventId = t.value;
+      else if (t.dataset.sel === 'report-scope') state.reportScope = t.value;
+      state.formError = null; state.confirm = null;
+      render();
+    }
+  });
+
+  /* ---------- 起動 ---------- */
+  function onDbError(){
+    state.dbOk = false; state.loaded = true; state.save = 'local';
+    scheduleRender();
+  }
+  async function init(){
+    render();
+    var ns = null;
+    try{ ns = (window.claude && window.claude.use) ? await window.claude.use('db') : null; }catch(err){ ns = null; }
+    if (!ns){
+      state.dbOk = false; state.loaded = true; state.save = 'local';
+      render();
+      return;
+    }
+    db = ns;
+    state.dbOk = true;
+    var got = {menu: false, items: false, events: false, records: false, fees: false};
+    function ready(k){ got[k] = true; if (got.menu && got.items && got.events && got.records && got.fees) state.loaded = true; scheduleRender(); }
+    try{
+      db.collection('menu').onSnapshot(function(snap){ applyMenuSnap(snap); ready('menu'); }, onDbError);
+      db.collection('items').onSnapshot(function(snap){ applyItemSnap(snap); ready('items'); }, onDbError);
+      db.collection('fees').onSnapshot(function(snap){ applyFeeSnap(snap); ready('fees'); }, onDbError);
+      db.collection('events').onSnapshot(function(snap){ applyEventSnap(snap); ready('events'); }, onDbError);
+      db.collection('records').onSnapshot(function(snap){ applyRecordSnap(snap); ready('records'); }, onDbError);
+    }catch(err){ onDbError(); }
+  }
+  window.addEventListener('online', function(){ render(); });
+  window.addEventListener('offline', function(){ render(); });
+  window.addEventListener('fb-write-error', function(){ setSave('error'); });
+  window.addEventListener('fb-sync', function(){ if (state.save === 'saved') setSave('saved'); });
+  init();
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0){
+  window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+}
+</script>
+</body>
+</html>
